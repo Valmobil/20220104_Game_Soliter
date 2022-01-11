@@ -1,0 +1,43 @@
+<!--
+  @description       : 
+  @author            : ChangeMeIn@UserSettingsUnder.SFDoc
+  @group             : 
+  @last modified on  : 01-11-2022
+  @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
+-->
+<template>
+    <div class="c-container fundamentals">
+        <lightning-layout>
+            <template for:each={fundamentals} for:item="line">
+                <lightning-layout-item key={line.id} class="runnign-track-card slds-p-around_medium slds-text-align_center" flexibility="auto, no-grow" padding="around-small">
+                    <template for:each={line.value} for:item="card">
+                        <div key={card.id} class="slds-box">
+                            {card.value}
+                        </div>
+                    </template>
+                </lightning-layout-item>
+            </template>
+            <lightning-layout-item flexibility="auto, no-grow" padding="around-small">
+                stock
+            </lightning-layout-item>
+        </lightning-layout>
+    </div>
+    <div class="c-container running-field">
+        <lightning-layout>
+            <template if:true={cards}> 
+                <template for:each={cards} for:item="line">
+                    <lightning-layout-item key={line.id} class="runnign-track-card slds-p-around_medium slds-text-align_center" flexibility="auto, no-grow" padding="around-small">
+                        <template for:each={line.value} for:item="card">
+                            <div key={card.id} class="slds-box">
+                                {card.value}
+                            </div>
+                        </template>
+                    </lightning-layout-item>
+                </template>
+            </template>
+            <template if:false={cards}> 
+                Not found or empty cards variable
+            </template>
+        </lightning-layout>
+    </div>
+</template>
