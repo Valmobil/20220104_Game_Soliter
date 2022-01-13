@@ -1,53 +1,66 @@
-import { LightningElement } from 'lwc';
+import { LightningElement, track } from 'lwc';
 import getNextField from '@salesforce/apex/SolitaireReturnNextField.getNextField'
 
 export default class SolitaireMainField extends LightningElement {
     
     fields = [];
+    @track
     fundamentals = [];
+    @track
     cards = [];
-    bears = '';
+    currentField;
     error;
-
-    handleLoad() {
-        getNextField()
-            .then(result => {
-                this.bears = result;
-            })
-            .catch(error => {
-                this.error = error;
-            });
-    }
+    inProgress = false;
 
     connectedCallback() {
-        getNextField()
-        .then(result => { 
-            this.bears = result;
-            console.log(result);
-            console.log(JSON.parse(result));
-            this.init(); 
-        })
-        .catch(error => { this.error = error; });
+        this.getNextFieldAndUpdate();
     }
 
-    init() {
-        let initialBoard = new BoardClass(0, 0);
-        initialBoard.runnignTrack =  [["2D"],["","2P"],["","","8D"],["","","","9D"],["","","","","KD"],["","","","","","2C"],["","","","","","","9H"]];
+    async getNextFieldAndUpdate() {
+        try {
+            const result = await getNextField();
+            this.bears = result;
+            this.currentField = JSON.parse(result);
+        } catch(error) { 
+            this.error = error; 
+        };
+        console.log('Apex answer');
+        console.log(this.bears);
+        console.log(this.currentField);
+
+        this.initHtml(this.currentField);
+    }
+
+    initHtml(curBoard) {
+        let initialBoard = curBoard;
+        // initialBoard.runnignTrack =  [["2D"],["","2P"],["","","8D"],["","","","9D"],["","","","","KD"],["","","","","","2C"],["","","","","","","9H"]];
         this.fields.push(initialBoard);
+        console.log('Fund')
+        console.log(initialBoard.fundamental)
         //define fundamentals
         for (let i = 0; i < initialBoard.fundamental.length; i++) {
+            console.log('in loop')
             let line = new Card(i, []);
             if (initialBoard.fundamental[i].length == 0) {
+                console.log('If true')
                 const card = new Card('f_' + i + '_' + 0 ,'');
                 line.value.push(card);
             } else {
+                console.log('If false')
+                console.log(initialBoard.fundamental[i]);
                 for (let j = 0; j < initialBoard.fundamental[i].length; j++) {
-                    const card = new Card('f_' + i + '_' + j ,initialBoard.fundamentals[i][j]);
+                    console.log('second for ')
+                    console.log(i);
+                    console.log(j);
+                    console.log(initialBoard.fundamental[i])
+                    console.log(initialBoard.fundamental[i][j])
+                    const card = new Card('f_' + i + '_' + j ,initialBoard.fundamental[i][j]);
                     line.value.push(card);
                 }
             }
             this.fundamentals.push(line);        
         }
+        console.log('Run')
         //define running board
         for (let i = 0; i < initialBoard.runnignTrack.length; i++) {
             let line = new Card(i, []);
@@ -57,8 +70,10 @@ export default class SolitaireMainField extends LightningElement {
             }
             this.cards.push(line);
         }
-        // console.log(this.cards);
-        // console.log(this.fundamentals);
+        console.log(this.cards);
+        console.log(this.fundamentals);
+        console.log(curBoard);
+        console.log(initialBoard);
     }
 }
 
