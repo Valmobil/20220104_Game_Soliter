@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 01-13-2022
+ * @last modified on  : 01-14-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 public with sharing class SolitaireReturnNextField {
@@ -17,14 +17,32 @@ public with sharing class SolitaireReturnNextField {
         Field field = new Field();
         field.id = 0;
         field.parentId = 0;
-        field.fundamental = new List<List<Card>>();
+        field.fundamental = new List<Line>();
+        System.debug('Empty Fund:');
+        System.debug(field.fundamental);
         for (Integer i = 0; i < FUNDAMENTAL_SIZE; i++) {
+            System.debug(field.fundamental);
+            //Add fundamental lines
+            Line line = new Line(i);
+            field.fundamental.add(line);
+
+            //add card to line
             Card card = new Card();
             card.id = uniqueIndex;
             uniqueIndex++;
-            card.address = 'f_' + i + '0';
-            field.fundamental.add(new List<Card>());
-            field.fundamental.get(i).add(card);
+            card.address = 'f_' + i + '_0';
+            card.value = '';
+            card.isEmpty = true;
+            field.fundamental.get(i).value.add(card);
+
+            //add second card to line - for test purposes
+            card = new Card();
+            card.id = uniqueIndex;
+            uniqueIndex++;
+            card.address = 'f_' + i + '_1';
+            card.value = '';
+            card.isEmpty = true;
+            field.fundamental.get(i).value.add(card);
         }
         field.runnignTrack = new List<List<String>>();
         for (Integer i = 0; i < RUNNING_SIZE; i++) {
@@ -34,16 +52,13 @@ public with sharing class SolitaireReturnNextField {
         field.stockPail.add('');
         String result = JSON.serialize(field);
 
-        System.debug(field);
-        System.debug(result);
-
         return result;
     }
 
     class Field {
         Integer id;
         Integer parentId;
-        List<List<Card>> fundamental;
+        List<Line> fundamental;
         String[] stockPail;
         String[][] runnignTrack;
     }
@@ -66,6 +81,15 @@ public with sharing class SolitaireReturnNextField {
         String address;
         String value;
         Boolean isEmpty = false;
+    }
+
+    class Line {
+        Line(Integer i) {
+            this.id = i;
+            this.value = new List<Card>();
+        }
+        Integer id;
+        List<Card> value;
     }
 
 }

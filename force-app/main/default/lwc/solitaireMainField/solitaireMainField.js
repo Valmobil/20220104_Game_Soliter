@@ -32,35 +32,19 @@ export default class SolitaireMainField extends LightningElement {
     }
 
     initHtml(curBoard) {
+        console.log('Start')
+        console.log(curBoard)
         let initialBoard = curBoard;
+        console.log(initialBoard)
         // initialBoard.runnignTrack =  [["2D"],["","2P"],["","","8D"],["","","","9D"],["","","","","KD"],["","","","","","2C"],["","","","","","","9H"]];
         this.fields.push(initialBoard);
         console.log('Fund')
         console.log(initialBoard.fundamental)
         //define fundamentals
-        for (let i = 0; i < initialBoard.fundamental.length; i++) {
-            console.log('in loop')
-            let line = new Card(i, []);
-            if (initialBoard.fundamental[i].length == 0) {
-                console.log('If true')
-                const card = new Card('f_' + i + '_' + 0 ,'');
-                line.value.push(card);
-            } else {
-                console.log('If false')
-                console.log(initialBoard.fundamental[i]);
-                for (let j = 0; j < initialBoard.fundamental[i].length; j++) {
-                    console.log('second for ')
-                    console.log(i);
-                    console.log(j);
-                    console.log(initialBoard.fundamental[i])
-                    console.log(initialBoard.fundamental[i][j])
-                    const card = new Card('f_' + i + '_' + j ,initialBoard.fundamental[i][j]);
-                    line.value.push(card);
-                }
-            }
-            this.fundamentals.push(line);        
-        }
+        this.fundamentals = initialBoard.fundamental;
         console.log('Run')
+        console.log(initialBoard.fundamental)
+        console.log(this.cards  )
         //define running board
         for (let i = 0; i < initialBoard.runnignTrack.length; i++) {
             let line = new Card(i, []);
