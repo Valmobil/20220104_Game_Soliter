@@ -2,7 +2,7 @@
   @description       : 
   @author            : ChangeMeIn@UserSettingsUnder.SFDoc
   @group             : 
-  @last modified on  : 01-11-2022
+  @last modified on  : 01-14-2022
   @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 -->
 <template>
@@ -28,9 +28,22 @@
                 <template for:each={cards} for:item="line">
                     <lightning-layout-item key={line.id} class="runnign-track-card slds-p-around_medium slds-text-align_center" flexibility="auto, no-grow" padding="around-small">
                         <template for:each={line.value} for:item="card">
-                            <div key={card.id} class="slds-box">
-                                {card.value}
-                            </div>
+                            <template if:true={card.isEmpty}>
+                                isEmpty
+                                <lightning-combobox
+                                    key={card.id}
+                                    data-item={card.id}
+                                    value={value}
+                                    options={options}
+                                    onchange={handleChange} >
+                                </lightning-combobox>
+                            </template>
+                            <template if:false={card.isEmpty}>
+                                isNotEmpty
+                                <div key={card.id} class="slds-box">
+                                    {card.value}
+                                </div>
+                            </template>
                         </template>
                     </lightning-layout-item>
                 </template>

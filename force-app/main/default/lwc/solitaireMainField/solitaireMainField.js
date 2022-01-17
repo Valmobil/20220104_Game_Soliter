@@ -1,50 +1,55 @@
 import { LightningElement, track } from 'lwc';
-import getNextField from '@salesforce/apex/SolitaireReturnNextField.getNextField'
+import getInitialBoard from '@salesforce/apex/SolitaireReturnNextField.getInitialBoard'
+import openOneCard from '@salesforce/apex/SolitaireReturnNextField.openOneCard'
+import SystemModstamp from '@salesforce/schema/Account.SystemModstamp';
 
 export default class SolitaireMainField extends LightningElement {
     
-    fields = [];
     @track
     fundamentals = [];
     @track
     cards = [];
-    currentField;
+    boards = [];
+    currentBoard;
     error;
-    inProgress = false;
 
     connectedCallback() {
-        this.getNextFieldAndUpdate();
+        console.log('1.')
+
+        this.getNextBoardAndUpdate();
     }
 
-    async getNextFieldAndUpdate() {
+    async openOneCardOnBoard(cardId, value) {
+        console.log('here')
         try {
-            const result = await getNextField();
-            this.bears = result;
-            this.currentField = JSON.parse(result);
+            console.log(`boardId ${this.currentBoard.boardId} cardId ${cardId} cardValue: ${value}`)
+            const result = await openOneCard({boardId: this.currentBoard.boardId, cardId: cardId, cardValue: value})
+            this.currentBoard = JSON.parse(result);
         } catch(error) { 
+            console.log('!!!error!!!')
             this.error = error; 
         };
-        console.log('Apex answer');
-        console.log(this.bears);
-        console.log(this.currentField);
+        console.log(result);
+        this.initHtml(this.currentBoard);
+    }
 
-        this.initHtml(this.currentField);
+    async getNextBoardAndUpdate() {
+        try {
+            const result = await getInitialBoard();
+            this.currentBoard = JSON.parse(result);
+        } catch(error) {
+            this.error = error; 
+            console.log(error);
+        };
+        this.initHtml(this.currentBoard);
     }
 
     initHtml(curBoard) {
-        console.log('Start')
-        console.log(curBoard)
         let initialBoard = curBoard;
-        console.log(initialBoard)
-        // initialBoard.runnignTrack =  [["2D"],["","2P"],["","","8D"],["","","","9D"],["","","","","KD"],["","","","","","2C"],["","","","","","","9H"]];
-        this.fields.push(initialBoard);
-        console.log('Fund')
-        console.log(initialBoard.fundamental)
+        this.boards.push(initialBoard);
         //define fundamentals
+        console.log(initialBoard)
         this.fundamentals = initialBoard.fundamental;
-        console.log('Run')
-        console.log(initialBoard.fundamental)
-        console.log(this.cards  )
         //define running board
         for (let i = 0; i < initialBoard.runnignTrack.length; i++) {
             let line = new Card(i, []);
@@ -54,10 +59,25 @@ export default class SolitaireMainField extends LightningElement {
             }
             this.cards.push(line);
         }
-        console.log(this.cards);
-        console.log(this.fundamentals);
-        console.log(curBoard);
-        console.log(initialBoard);
+    }
+
+    get options() {
+        let fig = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+        let type = ['P','C','D','H'];
+        let arr= [];
+        for (let i = 0; i < fig.length; i++) {
+            for (let j = 0; j < type.length; j++) {
+                arr.push({ label: fig[i] + type[j], value: fig[i] + type[j] }); 
+            }            
+        }
+        return arr;9
+    }
+
+    handleChange(event) {
+        console.log('this.handleChange')
+        console.log(event.target.dataset.item);
+        console.log(event.detail.value)
+        this.openOneCardOnBoard(event.target.dataset.item, event.detail.value);
     }
 }
 
@@ -77,4 +97,5 @@ class BoardClass {
 function Card(id, value) {
     this.id = id;
     this.value = value;
+    this.isEmpty = true;
 }
