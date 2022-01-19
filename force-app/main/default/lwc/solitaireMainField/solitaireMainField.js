@@ -1,7 +1,8 @@
-import { LightningElement, track } from 'lwc';
+import { LightningElement, track, wire } from 'lwc';
 import getInitialBoard from '@salesforce/apex/SolitaireReturnNextField.getInitialBoard'
 import openOneCard from '@salesforce/apex/SolitaireReturnNextField.openOneCard'
-import SystemModstamp from '@salesforce/schema/Account.SystemModstamp';
+import { subscribe, MessageContext } from 'lightning/messageService';
+import SOLITAIRE_UPDATE_CHANNEL from '@salesforce/messageChannel/Solitaire_Game_Update__c';
 
 export default class SolitaireMainField extends LightningElement {
     
@@ -9,34 +10,54 @@ export default class SolitaireMainField extends LightningElement {
     fundamentals = [];
     @track
     cards = [];
-    boards = [];
     currentBoard;
     error;
+    subscription = null;
+    @wire(MessageContext)
+    messageContext;
+
 
     connectedCallback() {
         console.log('1.')
-
+        this.subscribeToMessageChannel();
         this.getNextBoardAndUpdate();
     }
 
-    async openOneCardOnBoard(cardId, value) {
+    subscribeToMessageChannel() {
+      this.subscription = subscribe(
+        this.messageContext,
+        SOLITAIRE_UPDATE_CHANNEL,
+        (message) => this.handleMessage(message)
+      );
+    }
+    handleMessage(message) {
+        console.log('New game initiated');
+        if (message.operator == 'new') {
+            this.getNextBoardAndUpdate();
+        }
+    }
+
+    async openOneCardOnBoard(cardAddress, value) {
         console.log('here')
         try {
-            console.log(`boardId ${this.currentBoard.boardId} cardId ${cardId} cardValue: ${value}`)
-            const result = await openOneCard({boardId: this.currentBoard.boardId, cardId: cardId, cardValue: value})
+            console.log(`boardId ${this.currentBoard.boardId} cardAddress ${cardAddress} cardValue: ${value}`)
+            const result = await openOneCard({boardId: this.currentBoard.boardId, cardAddress: cardAddress, cardValue: value})
             this.currentBoard = JSON.parse(result);
         } catch(error) { 
             console.log('!!!error!!!')
             this.error = error; 
         };
-        console.log(result);
+        console.log(this.currentBoard);
         this.initHtml(this.currentBoard);
     }
 
     async getNextBoardAndUpdate() {
         try {
+            console.log('getInitialBoard:');
             const result = await getInitialBoard();
+            console.log('result: ' + result);
             this.currentBoard = JSON.parse(result);
+            console.log(this.currentBoard);
         } catch(error) {
             this.error = error; 
             console.log(error);
@@ -45,19 +66,23 @@ export default class SolitaireMainField extends LightningElement {
     }
 
     initHtml(curBoard) {
-        let initialBoard = curBoard;
-        this.boards.push(initialBoard);
-        //define fundamentals
-        console.log(initialBoard)
-        this.fundamentals = initialBoard.fundamental;
-        //define running board
-        for (let i = 0; i < initialBoard.runnignTrack.length; i++) {
-            let line = new Card(i, []);
-            for (let j = 0; j < initialBoard.runnignTrack[i].length; j++) {
-                const card = new Card('r_' + i + '_' + j ,initialBoard.runnignTrack[i][j]);
-                line.value.push(card);
+        if (curBoard) {
+            let initialBoard = curBoard;
+            console.log(`initialBoard: ${initialBoard}`);
+            console.log(initialBoard);
+
+            //define fundamentals
+            if (initialBoard.fundamental) {
+                this.fundamentals = initialBoard.fundamental;
             }
-            this.cards.push(line);
+            //define running board
+            if(initialBoard.runnignTrack) {
+                this.cards = initialBoard.runnignTrack;
+            }
+            console.log("this cards: ")
+            console.log(this.cards);
+        } else {
+            console.log('Current board is empty (in initHtml)');
         }
     }
 
