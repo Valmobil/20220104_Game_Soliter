@@ -2,10 +2,10 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 01-19-2022
+ * @last modified on  : 01-20-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
-public with sharing class SolitaireReturnNextField {
+global with sharing class SolitaireReturnNextField {
 
 
     public static final Integer FUNDAMENTAL_SIZE = 4;
@@ -34,17 +34,9 @@ public with sharing class SolitaireReturnNextField {
             
             board.boardId = null;
             System.debug(board);
-  
 
             //new set + new card
             defineLocationAndPutCard(board, cardAddress, cardValue);
-            
-            System.debug('newBoard(1):');
-            System.debug(board);
-            System.debug(board.runnignTrack);
-            System.debug(board.level);
-            System.debug(board.boardId);
-            
 
             board.level++;
             String result = JSON.serialize(board);
@@ -53,17 +45,17 @@ public with sharing class SolitaireReturnNextField {
             insert(boardDbNew);
 
             board.boardId = boardDbNew.id;
-            System.debug('newBoard(2):');
-            System.debug(boardDbNew);
-            System.debug(board.runnignTrack);
-            System.debug(board.level);
-            System.debug(board.boardId);
+
+            //calculate solutions
+            // SolitaireSolver.calculateVariarnts(board);
+
             result = JSON.serialize(board);
 
             return result;
         }
     }
 
+ 
     private static void defineLocationAndPutCard(Board board, String addr, String cardValue) {
         try {
             String firstLetter = addr.substring(0,1);
@@ -162,18 +154,17 @@ public with sharing class SolitaireReturnNextField {
         return boardDb;
     }
 
-    class Board {
+    global class Board {
         Id boardId;
         Integer parentId;
         Id gameid;
         Integer level;
         List<Line> fundamental;
         List<Line> stockPail;
-        List<Line> runnignTrack;
+        global List<Line> runnignTrack;
     }
 
-    class Card {
-
+    global class Card {
         Card(String address, String value) {
             this.address = address;
             if (String.isEmpty(value)) {
@@ -188,18 +179,18 @@ public with sharing class SolitaireReturnNextField {
             address = address;
         }
 
-        String address;
-        String value;
-        Boolean isEmpty = false;
+        global String address;
+        global String value;
+        global Boolean isEmpty = false;
     }
 
-    class Line {
+    global class Line {
         Line(Integer i) {
             this.id = i;
             this.value = new List<Card>();
         }
         Integer id;
-        List<Card> value;
+        global List<Card> value;
     }
 
 }

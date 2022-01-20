@@ -3,6 +3,7 @@ import getInitialBoard from '@salesforce/apex/SolitaireReturnNextField.getInitia
 import openOneCard from '@salesforce/apex/SolitaireReturnNextField.openOneCard'
 import { subscribe, MessageContext } from 'lightning/messageService';
 import SOLITAIRE_UPDATE_CHANNEL from '@salesforce/messageChannel/Solitaire_Game_Update__c';
+import MailingPostalCode from '@salesforce/schema/Contact.MailingPostalCode';
 
 export default class SolitaireMainField extends LightningElement {
     
@@ -15,6 +16,7 @@ export default class SolitaireMainField extends LightningElement {
     subscription = null;
     @wire(MessageContext)
     messageContext;
+    alreadyUsed = new Set();
 
 
     connectedCallback() {
@@ -38,11 +40,11 @@ export default class SolitaireMainField extends LightningElement {
     }
 
     async openOneCardOnBoard(cardAddress, value) {
-        console.log('here')
         try {
             console.log(`boardId ${this.currentBoard.boardId} cardAddress ${cardAddress} cardValue: ${value}`)
             const result = await openOneCard({boardId: this.currentBoard.boardId, cardAddress: cardAddress, cardValue: value})
             this.currentBoard = JSON.parse(result);
+            this.alreadyUsed.add(value);
         } catch(error) { 
             console.log('!!!error!!!')
             this.error = error; 
@@ -58,6 +60,7 @@ export default class SolitaireMainField extends LightningElement {
             console.log('result: ' + result);
             this.currentBoard = JSON.parse(result);
             console.log(this.currentBoard);
+            this.alreadyUsed.clear();
         } catch(error) {
             this.error = error; 
             console.log(error);
@@ -92,10 +95,13 @@ export default class SolitaireMainField extends LightningElement {
         let arr= [];
         for (let i = 0; i < fig.length; i++) {
             for (let j = 0; j < type.length; j++) {
-                arr.push({ label: fig[i] + type[j], value: fig[i] + type[j] }); 
+                const txt = fig[i] + type[j];
+                if (!this.alreadyUsed.has(txt)) {
+                    arr.push({ label: txt, value: txt });
+                } 
             }            
         }
-        return arr;9
+        return arr;
     }
 
     handleChange(event) {
