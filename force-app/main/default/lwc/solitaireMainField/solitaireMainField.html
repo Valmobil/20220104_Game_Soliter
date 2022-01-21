@@ -2,7 +2,7 @@
   @description       : 
   @author            : ChangeMeIn@UserSettingsUnder.SFDoc
   @group             : 
-  @last modified on  : 01-19-2022
+  @last modified on  : 01-21-2022
   @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 -->
 <template>
@@ -11,15 +11,37 @@
             <template for:each={fundamentals} for:item="line">
                 <lightning-layout-item key={line.id} class="runnign-track-card slds-p-around_medium slds-text-align_center" flexibility="auto, no-grow" padding="around-small">
                     <template for:each={line.value} for:item="card">
-                        <div key={card.address} class="slds-box">
-                            {card.value}
-                        </div>
+                        <template if:true={card.isEmpty}>
+                            <div key={card.address} class="slds-box">
+                            </div>
+                        </template>
+                        <template if:false={card.isEmpty}>
+                            <div key={card.address} class="slds-box box-open">
+                                {card.value}
+                            </div>
+                        </template>
                     </template>
                 </lightning-layout-item>
             </template>
-            <lightning-layout-item flexibility="auto, no-grow" padding="around-small">
-                stock
+            <lightning-layout-item class="runnign-track-card slds-p-around_medium slds-text-align_center slds-grid_align-end" flexibility="auto, no-grow" padding="around-small">
+                <div class="custom_class">
+                </div>
             </lightning-layout-item>
+            <template for:each={stocks} for:item="line">
+                <lightning-layout-item key={line.id} class="runnign-track-card slds-p-around_medium slds-text-align_center slds-grid_align-end" flexibility="auto, no-grow" padding="around-small">
+                    <template for:each={line.value} for:item="card">
+                        <template if:true={card.isEmpty}>
+                            <div key={card.address} class="slds-box">
+                            </div>
+                        </template>
+                        <template if:false={card.isEmpty}>
+                            <div key={card.address} class="slds-box box-open">
+                                {card.value}
+                            </div>
+                        </template>
+                    </template>
+                </lightning-layout-item>
+            </template>
         </lightning-layout>
     </div>
     <div class="c-container running-field">
@@ -29,25 +51,37 @@
                     <lightning-layout-item key={line.id} class="runnign-track-card slds-p-around_medium slds-text-align_center" flexibility="auto, no-grow" padding="around-small">
                         <template for:each={line.value} for:item="card">
                             <template if:true={card.isEmpty}>
-                                <lightning-combobox
-                                    key={card.address}
-                                    data-item={card.address}
-                                    value={value}
-                                    options={options}
-                                    onchange={handleChange} >
-                                </lightning-combobox>
+                                <div key={card.address} class="slds-box box-empty">
+                                </div>
                             </template>
                             <template if:false={card.isEmpty}>
-                                <div key={card.address} class="slds-box">
-                                    {card.value}
-                                </div>
+                                <template if:true={card.isOpen}>
+                                    <template if:false={card.isKnown}>
+                                        <lightning-combobox
+                                            class="box-input"
+                                            key={card.address}
+                                            data-item={card.address}
+                                            value={value}
+                                            options={options}
+                                            onchange={handleChange} >
+                                        </lightning-combobox>
+                                    </template>
+                                    <template if:true={card.isKnown}>
+                                        <template if:true={card.isOpen}>
+                                            <div key={card.address} class="slds-box box-open">
+                                                {card.value}
+                                            </div>
+                                        </template>
+                                    </template>
+                                </template>
+                                <template if:false={card.isOpen}>
+                                    <div key={card.address} class="slds-box box-closed">
+                                    </div>
+                                </template>
                             </template>
                         </template>
                     </lightning-layout-item>
                 </template>
-            </template>
-            <template if:false={cards}> 
-                Not found or empty cards variable
             </template>
         </lightning-layout>
     </div>

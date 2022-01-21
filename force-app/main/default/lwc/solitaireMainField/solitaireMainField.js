@@ -11,6 +11,8 @@ export default class SolitaireMainField extends LightningElement {
     fundamentals = [];
     @track
     cards = [];
+    @track
+    stocks = [];
     currentBoard;
     error;
     subscription = null;
@@ -82,8 +84,12 @@ export default class SolitaireMainField extends LightningElement {
             if(initialBoard.runnignTrack) {
                 this.cards = initialBoard.runnignTrack;
             }
-            console.log("this cards: ")
-            console.log(this.cards);
+            //define stocks
+            if(initialBoard.stockPail) {
+                this.stocks = initialBoard.stockPail;
+            }
+            console.log("this stocks: ")
+            console.log(this.stocks);
         } else {
             console.log('Current board is empty (in initHtml)');
         }

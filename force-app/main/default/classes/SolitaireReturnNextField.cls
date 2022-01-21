@@ -25,10 +25,9 @@ global with sharing class SolitaireReturnNextField {
             return '';
         } else {
             Solitair_Metadata__c boardDb = boardList.get(0);
-            System.debug('boardDb.value__c: ');
-            System.debug(boardDb.value__c);
+            // System.debug('boardDb.value__c: ');
+            // System.debug(boardDb.value__c);
             Board board = (Board) JSON.deserialize(boardDb.Value__c, Board.class);
-            
             System.debug('oldBoard:');
             System.debug(board);
             
@@ -79,53 +78,22 @@ global with sharing class SolitaireReturnNextField {
         }
     }
 
-
     @AuraEnabled
     public static String getInitialBoard() {
         
         System.debug('APEX: getInitialBoard');
         // List<Solitair_Game__c> games = [select name from Solitair_Game__c];
-        // Solitair_Game__c game;
-        // if (games.size() == 0) {
         Solitair_Game__c game = new Solitair_Game__c();
         game.name = 'Game_Name_' + System.now();
-        // games.add(game);
-        System.debug('New game: ' + game.id);
         insert game;
-        // } else {
-        //     game = games.get(0);
-        // }
         System.debug('New game: ' + game.id);
         Board board = new Board();
-         
         board.gameId = game.id;
         board.parentId = 0;
         board.level = 0;
-        board.fundamental = new List<Line>();
-        for (Integer i = 0; i < FUNDAMENTAL_SIZE; i++) {
-            System.debug(board.fundamental);
-            //Add fundamental lines
-            board.fundamental.add(new Line(i));
-
-            //add card to line
-            Card card = new Card('f_' + i + '_0', '');
-            board.fundamental.get(i).value.add(card);
-
-            //add second card to line - for test purposes
-            card = new Card('f_' + i + '_1', '');
-            board.fundamental.get(i).value.add(card);
-        }
-        board.runnignTrack = new List<Line>();
-        for (Integer i = 0; i < RUNNING_SIZE; i++) {
-            board.runnignTrack.add(new Line(i));
-
-            //add card to line
-            Card card = new Card('r_' + i + '_0', '');
-            board.runnignTrack.get(i).value.add(card);
-        }
-        board.stockPail = new List<Line>();
-        board.stockPail.add(new Line(0));
-        board.stockPail.get(0).value.add(new Card('s_0_0', ''));
+        board.runnignTrack = generateInitialSet('r', RUNNING_SIZE, 7);
+        board.fundamental = generateInitialSet('f', FUNDAMENTAL_SIZE, 1);
+        board.stockPail = generateInitialSet('s', 2, 10);
  
         String result = JSON.serialize(board);
 
@@ -138,13 +106,45 @@ global with sharing class SolitaireReturnNextField {
         } else {
             board.gameId = boardList.get(0).Solitair_Game_Id__c;
             board.boardId = boardList.get(0).id;
-            // дописать восстановление из базы
         }
         result = JSON.serialize(board);
         System.debug('Result to LWC: ' + result);
         return result;
     }
 
+    private static List<Line> generateInitialSet(String type, Integer size, Integer length) {
+        List<Line> lines = new List<Line>();
+        for (Integer i = 0; i < size; i++) {
+
+            //Add lines
+            lines.add(new Line(i));
+
+            Integer customLength = (type == 'r' ? i + 1 : ((type == 's' && i == 0) ? 1 : length));
+
+        
+            for (Integer j = 0; j < customLength; j++) {
+                //add card to line
+                Card card = new Card(type + '_' + i + '_' + j, '');
+                
+                //open each last card for running pails
+                if (type == 'r' && j == i) {
+                    card.isOpen = true;
+                } 
+                if (type == 'f') {
+                    card.isEmpty = true;
+                }
+                if (type == 's' && i == 0) {
+                    card.isEmpty = true;
+                }
+                lines.get(i).value.add(card);
+            }
+        }
+        if (type == 's') {
+            System.debug('Type: s' + ' Lines:' + lines);
+        }
+
+        return lines;
+    }
 
     private static Solitair_Metadata__c mapperBoardToBoardDb(Id gameId, String boardType, String jsonString) {
         Solitair_Metadata__c boardDb = new Solitair_Metadata__c();
@@ -169,9 +169,10 @@ global with sharing class SolitaireReturnNextField {
             this.address = address;
             if (String.isEmpty(value)) {
                 this.value = '';
-                this.isEmpty = true; 
+                this.isKnown = false; 
             } else {
                 this.value = value;
+                this.isKnown = true; 
             }
         }
 
@@ -182,6 +183,8 @@ global with sharing class SolitaireReturnNextField {
         global String address;
         global String value;
         global Boolean isEmpty = false;
+        global Boolean isOpen = false;
+        global Boolean isKnown = false;
     }
 
     global class Line {
