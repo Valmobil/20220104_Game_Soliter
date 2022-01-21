@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 01-20-2022
+ * @last modified on  : 01-21-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 global with sharing class SolitaireReturnNextField {
@@ -10,6 +10,9 @@ global with sharing class SolitaireReturnNextField {
 
     public static final Integer FUNDAMENTAL_SIZE = 4;
     public static final Integer RUNNING_SIZE = 7;
+    public static final Integer STOCK_PAIL_SIZE = 2;
+    public static final Integer STOCK_PAIL_LENGTH = 1;
+
     
     @AuraEnabled
     public static String openOneCard(String boardId, String cardAddress, String cardValue) {
@@ -25,30 +28,33 @@ global with sharing class SolitaireReturnNextField {
             return '';
         } else {
             Solitair_Metadata__c boardDb = boardList.get(0);
-            // System.debug('boardDb.value__c: ');
-            // System.debug(boardDb.value__c);
+            System.debug('boardDb.value__c: ');
+            System.debug(boardDb.value__c);
             Board board = (Board) JSON.deserialize(boardDb.Value__c, Board.class);
             System.debug('oldBoard:');
             System.debug(board);
             
-            board.boardId = null;
-            System.debug(board);
+            // board.boardId = null;
+            // System.debug(board);
 
             //new set + new card
             defineLocationAndPutCard(board, cardAddress, cardValue);
 
-            board.level++;
+            // board.level++;
+            board.boardId = boardDb.id;
             String result = JSON.serialize(board);
-            Solitair_Metadata__c boardDbNew = mapperBoardToBoardDb(board.gameId, 'Board', result);
+            boardDb.value__c = result;
+        
+            //Solitair_Metadata__c boardDbNew = mapperBoardToBoardDb(board.gameId, 'Board', result);
 
-            insert(boardDbNew);
+            update boardDb;
 
-            board.boardId = boardDbNew.id;
+            // board.boardId = boardDbNew.id;
 
             //calculate solutions
             // SolitaireSolver.calculateVariarnts(board);
 
-            result = JSON.serialize(board);
+            //result = JSON.serialize(board);
 
             return result;
         }
@@ -57,9 +63,11 @@ global with sharing class SolitaireReturnNextField {
  
     private static void defineLocationAndPutCard(Board board, String addr, String cardValue) {
         try {
-            String firstLetter = addr.substring(0,1);
-            Integer lineNumber = Integer.valueOf(addr.substring(2,3));
-            Integer position = Integer.valueOf(addr.substring(4,5));
+            Integer firstIndex = addr.indexOf('_');
+            Integer secondIndex = addr.indexOf('_', firstIndex + 1);
+            String firstLetter = addr.substring(0,firstIndex);
+            Integer lineNumber = Integer.valueOf(addr.substring(firstIndex + 1,secondIndex));
+            Integer position = Integer.valueOf(addr.substring(secondIndex + 1, addr.length()));
             Card card = null; 
             if (firstLetter == 'r') {
                 card = board.runnignTrack.get(lineNumber).value.get(position);
@@ -69,7 +77,7 @@ global with sharing class SolitaireReturnNextField {
                 card = board.stockPail.get(lineNumber).value.get(position);
             }
             card.value = cardValue;
-            card.isEmpty = String.isEmpty(cardValue);
+            card.isKnown = !String.isEmpty(cardValue);
         } catch (Exception e) {
             System.debug('Cell Address: ' + addr);
             System.debug(addr.substring(0,1));
@@ -93,7 +101,7 @@ global with sharing class SolitaireReturnNextField {
         board.level = 0;
         board.runnignTrack = generateInitialSet('r', RUNNING_SIZE, 7);
         board.fundamental = generateInitialSet('f', FUNDAMENTAL_SIZE, 1);
-        board.stockPail = generateInitialSet('s', 2, 10);
+        board.stockPail = generateInitialSet('s', STOCK_PAIL_SIZE, STOCK_PAIL_LENGTH);
  
         String result = JSON.serialize(board);
 
