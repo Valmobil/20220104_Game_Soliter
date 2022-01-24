@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 01-21-2022
+ * @last modified on  : 01-24-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 global with sharing class SolitaireReturnNextField {
@@ -45,6 +45,7 @@ global with sharing class SolitaireReturnNextField {
             String result = JSON.serialize(board);
             boardDb.value__c = result;
         
+
             //Solitair_Metadata__c boardDbNew = mapperBoardToBoardDb(board.gameId, 'Board', result);
 
             update boardDb;
@@ -52,7 +53,9 @@ global with sharing class SolitaireReturnNextField {
             // board.boardId = boardDbNew.id;
 
             //calculate solutions
-            // SolitaireSolver.calculateVariarnts(board);
+            System.debug('runnignTrack before varians:');
+            System.debug(board.runnignTrack);
+            SolitaireSolver.calculateVariants(board);
 
             //result = JSON.serialize(board);
 
@@ -60,29 +63,23 @@ global with sharing class SolitaireReturnNextField {
         }
     }
 
- 
-    private static void defineLocationAndPutCard(Board board, String addr, String cardValue) {
+    
+
+    private static void defineLocationAndPutCard(Board board, String address, String cardValue) {
         try {
-            Integer firstIndex = addr.indexOf('_');
-            Integer secondIndex = addr.indexOf('_', firstIndex + 1);
-            String firstLetter = addr.substring(0,firstIndex);
-            Integer lineNumber = Integer.valueOf(addr.substring(firstIndex + 1,secondIndex));
-            Integer position = Integer.valueOf(addr.substring(secondIndex + 1, addr.length()));
+            Address adrs = new Address(address);
             Card card = null; 
-            if (firstLetter == 'r') {
-                card = board.runnignTrack.get(lineNumber).value.get(position);
-            } else if (firstLetter == 'f') {
-                card = board.fundamental.get(lineNumber).value.get(position);
-            } else if (firstLetter == 's') {
-                card = board.stockPail.get(lineNumber).value.get(position);
+            if (adrs.firstLetter == 'r') {
+                card = board.runnignTrack.get(adrs.lineNumber).value.get(adrs.position);
+            } else if (adrs.firstLetter == 'f') {
+                card = board.fundamental.get(adrs.lineNumber).value.get(adrs.position);
+            } else if (adrs.firstLetter == 's') {
+                card = board.stockPail.get(adrs.lineNumber).value.get(adrs.position);
             }
             card.value = cardValue;
             card.isKnown = !String.isEmpty(cardValue);
         } catch (Exception e) {
-            System.debug('Cell Address: ' + addr);
-            System.debug(addr.substring(0,1));
-            System.debug(addr.substring(2,3));
-            System.debug(addr.substring(4,5));  
+            System.debug('Cell Address: ' + address);
         }
     }
 
@@ -137,6 +134,23 @@ global with sharing class SolitaireReturnNextField {
                 //open each last card for running pails
                 if (type == 'r' && j == i) {
                     card.isOpen = true;
+                    // remove after test
+                    if (i == 6) {
+                        card.value = 'AP';
+                    } else if (i == 1) {
+                        card.value = '2H';
+                    } else if (i == 2) {
+                        card.value = '3C';
+                    } else if (i == 3) {
+                        card.value = 'AH';
+                    } else if (i == 4) {
+                        card.value = '2H';
+                    } else if (i == 5) {
+                        card.value = '4C';
+                    }
+                    if (i < 7 && i > 0) {
+                        card.isKnown = true;
+                    }
                 } 
                 if (type == 'f') {
                     card.isEmpty = true;
@@ -162,46 +176,5 @@ global with sharing class SolitaireReturnNextField {
         return boardDb;
     }
 
-    global class Board {
-        Id boardId;
-        Integer parentId;
-        Id gameid;
-        Integer level;
-        List<Line> fundamental;
-        List<Line> stockPail;
-        global List<Line> runnignTrack;
-    }
-
-    global class Card {
-        Card(String address, String value) {
-            this.address = address;
-            if (String.isEmpty(value)) {
-                this.value = '';
-                this.isKnown = false; 
-            } else {
-                this.value = value;
-                this.isKnown = true; 
-            }
-        }
-
-        public void setAddress(String address) {
-            address = address;
-        }
-
-        global String address;
-        global String value;
-        global Boolean isEmpty = false;
-        global Boolean isOpen = false;
-        global Boolean isKnown = false;
-    }
-
-    global class Line {
-        Line(Integer i) {
-            this.id = i;
-            this.value = new List<Card>();
-        }
-        Integer id;
-        global List<Card> value;
-    }
 
 }

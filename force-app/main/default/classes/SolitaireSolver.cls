@@ -2,50 +2,101 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 01-20-2022
+ * @last modified on  : 01-24-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 public with sharing class SolitaireSolver {
 
-    // String[] fig = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
-    // String[] type = ['P','C','D','H'];
     public static Map<String, String[]> possiblePlaces = new Map<String, String[]>();
 
-    {
+    static {
+        System.debug('Start Initiate Available Moves');
         initAvailableMoves();
     }
 
-    public static void calculateVariarnts(SolitaireReturnNextField.Board board) {
+    public static void calculateVariants(Board board) {
         //map CardName and CardAddress
         Map<String, String> knownCards = new Map<String, String>();
-        
+        List<PossibleMovement> possibleMovements = new List<PossibleMovement>();
+        List<Id> newBoardsIds = new List<Id>(); 
+
+
         //set map of existing cards
-        for (SolitaireReturnNextField.Line line : board.runnignTrack) {
-            for (SolitaireReturnNextField.Card card : line.value) {
-                knownCards.put(card.value, card.address);                
+        for (Line line : board.runnignTrack) {
+            for (Card card : line.value) {
+                if (card.isKnown == false && card.isOpen) {
+                    return;
+                }
+                knownCards.put(card.value, card.address);               
             }
         }
 
         //take one card and check for possible movements
-        for (SolitaireReturnNextField.Line line : board.runnignTrack) {
-            for (SolitaireReturnNextField.Card card : line.value) {
-                SolitaireReturnNextField.Card[] nearCards = getNearCards(card.value);                
+        for (Line line : board.runnignTrack) {
+            for (Card card : line.value) {
+                List<String> nearCards = getNearCards(card.value);
+                for (String nearCard : nearCards) {
+                    if (knownCards.containsKey(nearCard)) {
+                        String address = knownCards.get(nearCard);
+                        PossibleMovement pm = new PossibleMovement(card.value, card.address, nearCard, address);
+                        possibleMovements.add(pm);
+                    }
+                }            
             }
+        }
+        System.debug('Possible movements');
+        System.debug(possibleMovements);
+
+
+        //generate new board for each movement
+        for (PossibleMovement oneMove : possibleMovements) {
+            Address adrCardFrom = new Address(oneMove.cardFromAddress);
+            Address adrCardTo = new Address(oneMove.cardToAddress);
+            cardAddTo(board, adrCardFrom, adrCardTo);
+            cardRemoveFrom(board, adrCardFrom);
         }
     }
 
-    private static SolitaireReturnNextField.Card[] getNearCards(String value) {
-        String[] cardsValue = possiblePlaces.get(value);
-        // if (cards.length() > 0) {
-        //     return cards;
-        // }
-        // return new SolitaireReturnNextField.Card[];
-        return null;
+    private static void cardAddTo(Board board, Address adrFrom, Address adrTo) {
+
     }
 
+    private static void cardRemoveFrom(Board board, Address adrFrom) {
+        
+    }
 
+    private static List<String> getNearCards(String value) {
+        System.debug('1.');
+        String[] cardsValues = possiblePlaces.get(value);
+        if (cardsValues != null) {
+            System.debug('2.');
+            System.debug(value);
+            System.debug(cardsValues);
+            System.debug(possiblePlaces);
+            if (cardsValues.size() > 0) {
+                System.debug('3.');
+                return cardsValues;
+            }
+        }
+        System.debug('4.');
+        return new List<String>();
+    }
 
-    private void initAvailableMoves() {
+    class PossibleMovement{
+        PossibleMovement(String cardFromValue, String cardFromAddress, String cardToValue, String cardToAddress) {
+            this.cardFromValue = cardFromValue;
+            this.cardFromAddress = cardFromAddress;
+            this.cardToValue = cardToValue;
+            this.cardToAddress = cardToAddress;
+        }
+        String cardFromValue;
+        String cardFromAddress;
+        String cardToValue;
+        String cardToAddress;
+    }    
+
+    private static void initAvailableMoves() {
+        System.debug('Initiate Available Moves');
         possiblePlaces.put('AP', new String[] {'H0','H1','H2','H3','2D','2H'}); 
         possiblePlaces.put('AC', new String[] {'H0','H1','H2','H3','2D','2H'}); 
         possiblePlaces.put('AD', new String[] {'H0','H1','H2','H3','2P','2C'});

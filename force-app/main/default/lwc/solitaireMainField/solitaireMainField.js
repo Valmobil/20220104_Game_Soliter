@@ -1,6 +1,6 @@
 import { LightningElement, track, wire } from 'lwc';
-import getInitialBoard from '@salesforce/apex/SolitaireReturnNextField.getInitialBoard'
-import openOneCard from '@salesforce/apex/SolitaireReturnNextField.openOneCard'
+import getInitialBoard from '@salesforce/apex/getInitialBoard'
+import openOneCard from '@salesforce/apex/openOneCard'
 import { subscribe, MessageContext } from 'lightning/messageService';
 import SOLITAIRE_UPDATE_CHANNEL from '@salesforce/messageChannel/Solitaire_Game_Update__c';
 import MailingPostalCode from '@salesforce/schema/Contact.MailingPostalCode';
@@ -48,7 +48,7 @@ export default class SolitaireMainField extends LightningElement {
             this.currentBoard = JSON.parse(result);
             this.alreadyUsed.add(value);
         } catch(error) { 
-            console.log('!!!error!!!')
+            console.log('!!!error on backend!!!')
             this.error = error; 
         };
         console.log(this.currentBoard);
