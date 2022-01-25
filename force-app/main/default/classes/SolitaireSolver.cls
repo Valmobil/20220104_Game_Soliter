@@ -15,6 +15,7 @@ public with sharing class SolitaireSolver {
     }
 
     public static void calculateVariants(Board board) {
+        
         //map CardName and CardAddress
         Map<String, String> knownCards = new Map<String, String>();
         List<PossibleMovement> possibleMovements = new List<PossibleMovement>();
@@ -52,33 +53,111 @@ public with sharing class SolitaireSolver {
         for (PossibleMovement oneMove : possibleMovements) {
             Address adrCardFrom = new Address(oneMove.cardFromAddress);
             Address adrCardTo = new Address(oneMove.cardToAddress);
-            cardAddTo(board, adrCardFrom, adrCardTo);
-            cardRemoveFrom(board, adrCardFrom);
+            System.debug('Possible Movements:');
+            System.debug(oneMove);
+            System.debug(adrCardFrom);
+            System.debug(adrCardTo);
+
+            Board newBoard = board.cloneBoard();
+            System.debug('1.');
+            if(moveCards(newBoard, adrCardFrom, adrCardTo)) {
+                System.debug('2.');
+                String result = JSON.serialize(newBoard);
+                Solitair_Metadata__c boardDbNew = board.mapperBoardToBoardDb(board.gameId, 'Board', result);
+                System.debug('3.');
+                System.debug('boardDbNew:');
+                System.debug(boardDbNew);
+                insert boardDbNew;
+            }
         }
     }
 
-    private static void cardAddTo(Board board, Address adrFrom, Address adrTo) {
 
-    }
 
-    private static void cardRemoveFrom(Board board, Address adrFrom) {
+
+    private static Boolean moveCards(Board board, Address adrFrom, Address adrTo) {
+        System.debug('1.0');
+        // move fundamentals
+        if (adrFrom.firstLetter == 'f') {
+            System.debug('f1.0');
+            List<Card> lineFrom = board.fundamental.get(adrFrom.lineNumber).value;
+            if (lineFrom.size() != adrFrom.position + 1) {
+                //we can move only the last card in line
+                System.debug('f1.1');
+                return false;
+            } 
+            if (adrTo.firstLetter == 's') {
+                //we cannot move cards to stock pail
+                System.debug('f1.2');
+                return false;
+            }
+            List<Card> lineTo = board.runnignTrack.get(adrTo.lineNumber).value;
+            if (adrTo.firstLetter == 'r') {
+                //we can move only on the lates running cards
+                if (lineTo.size() != adrTo.position + 1) {
+                    //we can move only the last card in line
+                    System.debug('f1.3');
+                    return false;
+                } 
+            }
+            // Move cards
+            for (Integer i = adrFrom.position; i < lineFrom.size(); i++) {
+                lineTo.add(lineFrom.get(i));
+            }
+            for (Integer i = adrFrom.position; i < lineFrom.size(); i++) {
+                lineFrom.remove(adrFrom.position);
+            }
+            return true;
+        }
         
+        // move running pails
+        if (adrFrom.firstLetter == 'r') {
+            System.debug('r1.0');
+            List<Card> lineFrom = board.runnignTrack.get(adrFrom.lineNumber).value;
+            if (adrTo.firstLetter == 's') {
+                //we cannot move cards to stock pail
+                System.debug('r1.1');
+                return false;
+            }
+            List<Card> lineTo = board.runnignTrack.get(adrTo.lineNumber).value;
+            if (adrTo.firstLetter == 'f') {
+                //we can move only on the lates running cards
+                if (lineTo.size() != adrTo.position + 1) {
+                    //we can move only the last card in line
+                    System.debug('r1.2');
+                    return false;
+                } 
+            }
+            if (adrTo.firstLetter == 'r') {
+                //we can move only on the lates running cards
+                if (lineTo.size() != adrTo.position + 1) {
+                    //we can move only the last card in line
+                    System.debug('r1.3');
+                    return false;
+                } 
+            }
+            // Move cards
+            System.debug('lineFrom:');
+            System.debug(lineFrom);
+            System.debug(adrFrom);
+            System.debug('lineTo:');
+            System.debug(lineTo);
+            System.debug(adrTo);
+            lineTo.add(lineFrom.get(adrFrom.position));
+            lineFrom.remove(adrFrom.position);
+            return true;
+        }
+        System.debug('2.0');
+        return false;
     }
 
     private static List<String> getNearCards(String value) {
-        System.debug('1.');
         String[] cardsValues = possiblePlaces.get(value);
         if (cardsValues != null) {
-            System.debug('2.');
-            System.debug(value);
-            System.debug(cardsValues);
-            System.debug(possiblePlaces);
             if (cardsValues.size() > 0) {
-                System.debug('3.');
                 return cardsValues;
             }
         }
-        System.debug('4.');
         return new List<String>();
     }
 

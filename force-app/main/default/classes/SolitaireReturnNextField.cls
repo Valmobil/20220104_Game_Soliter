@@ -94,7 +94,7 @@ global with sharing class SolitaireReturnNextField {
         System.debug('New game: ' + game.id);
         Board board = new Board();
         board.gameId = game.id;
-        board.parentId = 0;
+        board.parentId = null;
         board.level = 0;
         board.runnignTrack = generateInitialSet('r', RUNNING_SIZE, 7);
         board.fundamental = generateInitialSet('f', FUNDAMENTAL_SIZE, 1);
@@ -105,7 +105,7 @@ global with sharing class SolitaireReturnNextField {
         List<Solitair_Metadata__c> boardList = [select id, Solitair_Game_Id__c from Solitair_Metadata__c where Solitair_Game_Id__c = :board.boardId];
         if (boardList.size() == 0) {
             System.debug('No boards');
-            Solitair_Metadata__c boardDb = mapperBoardToBoardDb(board.gameId, 'Board', result);
+            Solitair_Metadata__c boardDb = board.mapperBoardToBoardDb(board.gameId, 'Board', result);
             insert boardDb;
             board.boardId = boardDb.id;
         } else {
@@ -167,14 +167,4 @@ global with sharing class SolitaireReturnNextField {
 
         return lines;
     }
-
-    private static Solitair_Metadata__c mapperBoardToBoardDb(Id gameId, String boardType, String jsonString) {
-        Solitair_Metadata__c boardDb = new Solitair_Metadata__c();
-        boardDb.Solitair_Game_Id__c = gameId;
-        boardDb.Type__c = 'Board';
-        boardDb.Value__c = jsonString;
-        return boardDb;
-    }
-
-
 }

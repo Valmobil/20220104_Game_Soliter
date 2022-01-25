@@ -9,8 +9,27 @@ global with sharing class Board {
     public Board() {
 
     }
+
+    public Board cloneBoard() {
+        String jsonStr = JSON.serialize(this);
+        Board newBoard = (Board) JSON.deserialize(jsonStr, Board.class);
+        newBoard.boardId = null;
+        newBoard.gameId = this.gameId;
+        newBoard.parentId = this.boardId;
+        newBoard.level = this.level + 1;
+        return newBoard;
+    }
+
+    global Solitair_Metadata__c mapperBoardToBoardDb(Id gameId, String boardType, String jsonString) {
+        Solitair_Metadata__c boardDb = new Solitair_Metadata__c();
+        boardDb.Solitair_Game_Id__c = gameId;
+        boardDb.Type__c = 'Board';
+        boardDb.Value__c = jsonString;
+        return boardDb;
+    }
+
     global Id boardId;
-    global Integer parentId;
+    global Id parentId;
     global Id gameid;
     global Integer level;
     global List<Line> fundamental;
