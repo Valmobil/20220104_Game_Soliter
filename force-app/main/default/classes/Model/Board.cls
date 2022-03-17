@@ -7,7 +7,6 @@
 **/
 global with sharing class Board {
     public Board() {
-
     }
 
     public Board cloneBoard() {
@@ -23,16 +22,17 @@ global with sharing class Board {
     global Solitair_Metadata__c mapperBoardToBoardDb(Id gameId, String boardType, String jsonString) {
         Solitair_Metadata__c boardDb = new Solitair_Metadata__c();
         boardDb.Solitair_Game_Id__c = gameId;
-        boardDb.Type__c = 'Board';
+        boardDb.Type__c = boardType;
         boardDb.Value__c = jsonString;
         return boardDb;
     }
 
     global Id boardId;
     global Id parentId;
-    global Id gameid;
+    global Id gameId;
     global Integer level;
+    global String lastMove;
     global List<Line> fundamental;
     global List<Line> stockPail;
-    global List<Line> runnignTrack;
+    global List<Line> runningTrack;
 }

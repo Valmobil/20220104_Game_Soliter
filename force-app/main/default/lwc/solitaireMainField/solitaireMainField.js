@@ -1,9 +1,9 @@
 import { LightningElement, track, wire } from 'lwc';
-import getInitialBoard from '@salesforce/apex/getInitialBoard'
-import openOneCard from '@salesforce/apex/openOneCard'
-import { subscribe, MessageContext } from 'lightning/messageService';
+import getInitialBoard from '@salesforce/apex/SolitaireReturnNextField.getInitialBoard'
+import openOneCard from '@salesforce/apex/SolitaireReturnNextField.openOneCard'
+import openSelectedBoard from '@salesforce/apex/SolitaireReturnNextField.openSelectedBoard'
+import { subscribe, publish, MessageContext } from 'lightning/messageService';
 import SOLITAIRE_UPDATE_CHANNEL from '@salesforce/messageChannel/Solitaire_Game_Update__c';
-import MailingPostalCode from '@salesforce/schema/Contact.MailingPostalCode';
 
 export default class SolitaireMainField extends LightningElement {
     
@@ -34,10 +34,15 @@ export default class SolitaireMainField extends LightningElement {
         (message) => this.handleMessage(message)
       );
     }
+
     handleMessage(message) {
-        console.log('New game initiated');
+        console.log('Listen for event - Solitaire Main Field');
         if (message.operator == 'new') {
+            console.log('New game initiated');
             this.getNextBoardAndUpdate();
+        } else if (message.operator == 'open') {
+            console.log('Open board');
+            this.openExistingBoard(message.constant);
         }
     }
 
@@ -46,7 +51,18 @@ export default class SolitaireMainField extends LightningElement {
             console.log(`boardId ${this.currentBoard.boardId} cardAddress ${cardAddress} cardValue: ${value}`)
             const result = await openOneCard({boardId: this.currentBoard.boardId, cardAddress: cardAddress, cardValue: value})
             this.currentBoard = JSON.parse(result);
+            console.log("Current board:")
+            console.log(this.currentBoard)
             this.alreadyUsed.add(value);
+
+            //fire event for right frame on result update
+            const payload = {
+                operator: 'result',
+                constant: this.currentBoard.gameId
+              };
+              console.log('Result event initiator: ');
+              console.log(payload);
+              publish(this.messageContext, SOLITAIRE_UPDATE_CHANNEL, payload);
         } catch(error) { 
             console.log('!!!error on backend!!!')
             this.error = error; 
@@ -62,9 +78,55 @@ export default class SolitaireMainField extends LightningElement {
             console.log('result: ' + result);
             this.currentBoard = JSON.parse(result);
             console.log(this.currentBoard);
-            this.alreadyUsed.clear();
+            this.alreadyUsed = this.updateAlreadyInUseCardList(this.currentBoard);
+            console.log('already in use:');
+            console.log(this.alreadyUsed);
+
         } catch(error) {
             this.error = error; 
+            console.log(error);
+        };
+        this.initHtml(this.currentBoard);
+    }
+
+    updateAlreadyInUseCardList(currentBoard) {
+        let alreadyInUse = new Set();
+        for (let line of currentBoard.fundamental) {
+            for (let card of line.value) {
+                if (card.isKnown) {
+                    alreadyInUse.add(card.value);
+                }
+            }
+        }
+
+        for (let line of currentBoard.runningTrack) {
+            console.log(line['value'])
+            for (let card of line.value) {
+                if (card.isKnown) {
+                    alreadyInUse.add(card.value);
+                }
+            }
+        }
+        for (let line of currentBoard.stockPail) {
+            for (let card of line.value) {
+                if (card.isKnown) {
+                    alreadyInUse.add(card.value);
+                }
+            }
+        }
+        return alreadyInUse;
+    }
+
+    async openExistingBoard(boardId) {
+        try {
+            console.log('Open_Board:');
+            console.log(boardId);
+            const result = await openSelectedBoard({boardId: boardId});
+            console.log('result: ' + result);
+            this.currentBoard = JSON.parse(result);
+            this.alreadyUsed = this.updateAlreadyInUseCardList(this.currentBoard);
+        } catch(error) {
+            this.error = error;
             console.log(error);
         };
         this.initHtml(this.currentBoard);
@@ -81,8 +143,8 @@ export default class SolitaireMainField extends LightningElement {
                 this.fundamentals = initialBoard.fundamental;
             }
             //define running board
-            if(initialBoard.runnignTrack) {
-                this.cards = initialBoard.runnignTrack;
+            if(initialBoard.runningTrack) {
+                this.cards = initialBoard.runningTrack;
             }
             //define stocks
             if(initialBoard.stockPail) {
@@ -126,7 +188,7 @@ class BoardClass {
         this.parentId = parentId;
         this.fundamental = [[],[],[],[]];
         this.stockPail = [];
-        this.runnignTrack = [[],[],[],[],[],[],[]];
+        this.runningTrack = [[],[],[],[],[],[],[]];
     }
 }
 

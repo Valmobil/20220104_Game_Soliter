@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 01-24-2022
+ * @last modified on  : 03-17-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 public with sharing class SolitaireSolver {
@@ -14,89 +14,213 @@ public with sharing class SolitaireSolver {
         initAvailableMoves();
     }
 
-    public static void calculateVariants(Board board) {
-        
-        //map CardName and CardAddress
-        Map<String, String> knownCards = new Map<String, String>();
-        List<PossibleMovement> possibleMovements = new List<PossibleMovement>();
-        List<Id> newBoardsIds = new List<Id>(); 
+//    @future
+//    public static void calculateVariantsAsynchronously(String boardStr) {
+//        System.debug('@Future method call');
+//        System.debug(boardStr);
+//        Board board = (Board) JSON.deserialize(boardStr, Board.class);
+//        System.debug(board);
+//        calculateVariants(board);
+//    }
 
+    public static List<Board> calculateVariants(Board board) {
 
-        //set map of existing cards
-        for (Line line : board.runnignTrack) {
-            for (Card card : line.value) {
-                if (card.isKnown == false && card.isOpen) {
-                    return;
-                }
-                knownCards.put(card.value, card.address);               
-            }
+        List<Board> boardsNew = new List<Board>();
+
+        //set map of existing cards running tracks
+        Map<String, String> knownCards = collectExistingCardsList(board);
+        if (knownCards == null) {
+            return new List<Board>();
         }
+
+        System.debug('Known cards:');
+        System.debug(knownCards);
 
         //take one card and check for possible movements
-        for (Line line : board.runnignTrack) {
-            for (Card card : line.value) {
-                List<String> nearCards = getNearCards(card.value);
-                for (String nearCard : nearCards) {
-                    if (knownCards.containsKey(nearCard)) {
-                        String address = knownCards.get(nearCard);
-                        PossibleMovement pm = new PossibleMovement(card.value, card.address, nearCard, address);
-                        possibleMovements.add(pm);
-                    }
-                }            
-            }
-        }
+        List<PossibleMovement> possibleMovements = preparePossibleMovements(board, knownCards);
+
         System.debug('Possible movements');
         System.debug(possibleMovements);
 
 
         //generate new board for each movement
         for (PossibleMovement oneMove : possibleMovements) {
-            Address adrCardFrom = new Address(oneMove.cardFromAddress);
-            Address adrCardTo = new Address(oneMove.cardToAddress);
             System.debug('Possible Movements:');
             System.debug(oneMove);
+            Address adrCardFrom = new Address(oneMove.cardFromAddress);
+            Address adrCardTo = new Address(oneMove.cardToAddress);
             System.debug(adrCardFrom);
             System.debug(adrCardTo);
-
             Board newBoard = board.cloneBoard();
+            newBoard.lastMove = board.level + '.' + oneMove.cardFromValue + '(' + adrCardFrom.toString() + ')->' + oneMove.cardToValue + '(' + adrCardTo.toString() + ')';
             System.debug('1.');
             if(moveCards(newBoard, adrCardFrom, adrCardTo)) {
                 System.debug('2.');
                 String result = JSON.serialize(newBoard);
                 Solitair_Metadata__c boardDbNew = board.mapperBoardToBoardDb(board.gameId, 'Board', result);
-                System.debug('3.');
-                System.debug('boardDbNew:');
-                System.debug(boardDbNew);
                 insert boardDbNew;
+
+                //run variant calculation
+                newBoard.boardId = boardDbNew.id;
+                boardsNew.add(newBoard);
             }
         }
+        return boardsNew;
+    }
+
+    private static List<PossibleMovement> preparePossibleMovements(Board board, Map<String, String> knownCards) {
+        List<PossibleMovement> possibleMovements = new List<PossibleMovement>();
+        System.debug('Possible movement calculation');
+        
+        //running track possible movements
+        for (Line line : board.runningTrack) {
+            for (Card card : line.value) {
+                findPossibleMovements(possibleMovements, card, knownCards);
+            }
+        }
+
+        //stock pale possible movements
+        //move already open stock pale last card (left line)
+        if(board.stockPail.size() > 0) {
+            Line line = board.stockPail.get(0);
+            if(line.value.size() > 0) {
+                Card card = line.value.get(line.value.size()-1);
+                findPossibleMovements(possibleMovements, card, knownCards);
+            }
+        }
+
+        //stock pale possible movements
+        //move already open stock pale last card (left line)
+        if(board.stockPail.size() > 1) {
+            System.debug('board.stockPail.size() == 1');
+            Line line = board.stockPail.get(1);
+            if(line.value.size() > 0) {
+                System.debug('line.value.size() > 0');
+                Card card = line.value.get(line.value.size() - 1);
+
+                Line lineTo = board.stockPail.get(0);
+                Card cardTo = lineTo.value.get(lineTo.value.size() - 1);
+                if (cardTo.isKnown || cardTo.isEmpty) {
+                    System.debug('cardTo.isKnown');
+                    System.debug('card:');
+                    System.debug(card);
+                    PossibleMovement pm = new PossibleMovement(card.value, card.address, cardTo.value, cardTo.address);
+                    System.debug('pm: ' + pm);
+                    possibleMovements.add(pm);    
+                }
+            }
+        }
+        return possibleMovements;
     }
 
 
+    private static void findPossibleMovements(List<PossibleMovement> possibleMovements, Card card, Map<String, String> knownCards) {
+        List<String> nearCards = getNearCards(card.value);
+        for (String nearCard : nearCards) {
+            if (knownCards.containsKey(nearCard)) {
+                String address = knownCards.get(nearCard);
+                Address addrTo = new Address(address);
+                if (addrTo.firstLetter == 'F') {
+                    if ('F' != nearCard.substring(0,1) && card.value.charAt(card.value.length() - 1) != nearCard.charAt(nearCard.length() - 1)) {
+                        //if Fundamental card has no same type
+                        System.debug('Exception from:' + card + ' to: ' + nearCard);
+                        continue;
+                    }
+                }
+                if (addrTo.firstLetter == 'R') {
+                    if (card.value.charAt(card.value.length() - 1) == nearCard.charAt(nearCard.length() - 1)) {
+                        //if Running card has same type
+                        System.debug('Exception from:' + card + ' to: ' + nearCard);
+                        continue;
+                    }
+                }
+                PossibleMovement pm = new PossibleMovement(card.value, card.address, nearCard, address);
+                possibleMovements.add(pm);
+            }
+        }
+
+    }
+
+
+    private static Map<String, String> collectExistingCardsList(Board board) {
+        Map<String, String> knownCards = new Map<String, String>();
+
+        //collect available cards in running track
+        for (Integer i = 0; i < board.runningTrack.size(); i++) {
+            Line line = board.runningTrack.get(i);
+            for (Card card : line.value) {
+                if (card.isKnown == false && card.isOpen) {
+                    //if we have at least one open but unknown card, stop analysis
+                    return null;
+                }
+                String cardName = card.value;
+                if (String.isBlank(cardName) && card.isEmpty) {
+                    //if cell is blank fill with virtual card name
+                    cardName = 'R' + i;
+                }
+                if (card.isKnown || card.isEmpty) {
+                    //add only known cards and blank cells
+                    knownCards.put(card.value, card.address);
+                }
+            }
+        }
+
+        //set map of existing cards in fundamentals
+        for (Integer i = 0; i < board.fundamental.size(); i++) {
+            Line line = board.fundamental.get(i);
+            for (Integer j = 0; j < line.value.size(); j++) {
+                if (j == line.value.size() - 1) {
+                    Card card = line.value.get(j);
+                    String cardName = card.value;
+                    if (String.isBlank(cardName)) {
+                        //if cell is blank fill with virtual card name
+                        cardName = 'F' + i;
+                    }
+                    knownCards.put(cardName, card.address);
+                }
+            }
+        }
+
+        //collect available cards in stock pail
+        for (Integer i = 0; i < board.stockPail.size(); i++) {
+            Line line = board.stockPail.get(i);
+            for (Card card : line.value) {
+                if (card.isKnown == false && card.isOpen) {
+                    //if we have at least one open but unknown card, stop analysis
+                    return null;
+                }
+                String cardName = card.value;
+                if (String.isBlank(cardName) && card.isEmpty) {
+                    //if cell is blank fill with virtual card name
+                    cardName = 'S' + i;
+                }
+                if (card.isKnown || card.isEmpty) {
+                    //add only known cards and blank cells
+                    knownCards.put(card.value, card.address);
+                }
+            }
+        }
+        return knownCards;
+    }
 
 
     private static Boolean moveCards(Board board, Address adrFrom, Address adrTo) {
-        System.debug('1.0');
         // move fundamentals
         if (adrFrom.firstLetter == 'f') {
-            System.debug('f1.0');
             List<Card> lineFrom = board.fundamental.get(adrFrom.lineNumber).value;
             if (lineFrom.size() != adrFrom.position + 1) {
                 //we can move only the last card in line
-                System.debug('f1.1');
                 return false;
             } 
             if (adrTo.firstLetter == 's') {
                 //we cannot move cards to stock pail
-                System.debug('f1.2');
                 return false;
             }
-            List<Card> lineTo = board.runnignTrack.get(adrTo.lineNumber).value;
+            List<Card> lineTo = board.runningTrack.get(adrTo.lineNumber).value;
             if (adrTo.firstLetter == 'r') {
-                //we can move only on the lates running cards
+                //we can move only on the latest running cards
                 if (lineTo.size() != adrTo.position + 1) {
                     //we can move only the last card in line
-                    System.debug('f1.3');
                     return false;
                 } 
             }
@@ -112,43 +236,108 @@ public with sharing class SolitaireSolver {
         
         // move running pails
         if (adrFrom.firstLetter == 'r') {
-            System.debug('r1.0');
-            List<Card> lineFrom = board.runnignTrack.get(adrFrom.lineNumber).value;
+            List<Card> lineFrom = board.runningTrack.get(adrFrom.lineNumber).value;
+            List<Card> lineTo;
             if (adrTo.firstLetter == 's') {
                 //we cannot move cards to stock pail
-                System.debug('r1.1');
                 return false;
             }
-            List<Card> lineTo = board.runnignTrack.get(adrTo.lineNumber).value;
             if (adrTo.firstLetter == 'f') {
-                //we can move only on the lates running cards
+                lineTo = board.fundamental.get(adrTo.lineNumber).value;
+                //we can move only on the latest running cards
                 if (lineTo.size() != adrTo.position + 1) {
                     //we can move only the last card in line
-                    System.debug('r1.2');
                     return false;
                 } 
             }
             if (adrTo.firstLetter == 'r') {
-                //we can move only on the lates running cards
+                lineTo = board.runningTrack.get(adrTo.lineNumber).value;
+                //we can move only on the latest running cards
                 if (lineTo.size() != adrTo.position + 1) {
                     //we can move only the last card in line
-                    System.debug('r1.3');
                     return false;
                 } 
             }
             // Move cards
-            System.debug('lineFrom:');
-            System.debug(lineFrom);
-            System.debug(adrFrom);
-            System.debug('lineTo:');
-            System.debug(lineTo);
-            System.debug(adrTo);
+
+            removeBlankCardFromLine(lineTo, adrTo);
+
             lineTo.add(lineFrom.get(adrFrom.position));
             lineFrom.remove(adrFrom.position);
+
+            //"open" last but one card
+            if (adrFrom.position > 0) {
+                lineFrom.get(adrFrom.position - 1).isOpen = true;
+            }
+
+            //add "empty" card on in blank line
+            if (lineFrom.isEmpty()) {
+                Card card = new Card();
+                card.value = '';
+                card.isEmpty = true;
+                card.address = 'r_' + lineFrom + '_' + adrFrom;
+                lineFrom.add(card);
+            }
+            return true;
+        }
+
+
+        // move stock pail
+        if (adrFrom.firstLetter == 's') {
+            System.debug('Move from Stock Pail = ');
+            List<Card> lineFrom = board.stockPail.get(adrFrom.lineNumber).value;
+            List<Card> lineTo;
+            if (adrTo.firstLetter == 's') {
+                lineTo = board.stockPail.get(adrTo.lineNumber).value;
+            }
+            if (adrTo.firstLetter == 'f') {
+                lineTo = board.fundamental.get(adrTo.lineNumber).value;
+                //we can move only on the latest running cards
+                if (lineTo.size() != adrTo.position + 1) {
+                    //we can move only the last card in line
+                    return false;
+                } 
+            }
+            if (adrTo.firstLetter == 'r') {
+                lineTo = board.runningTrack.get(adrTo.lineNumber).value;
+                //we can move only on the latest running cards
+                if (lineTo.size() != adrTo.position + 1) {
+                    //we can move only the last card in line
+                    return false;
+                } 
+            }
+
+            // Move cards
+            System.debug('Move ST');
+            removeBlankCardFromLine(lineTo, adrTo);
+
+            lineTo.add(lineFrom.get(adrFrom.position));
+            lineFrom.remove(adrFrom.position);
+
+            //"open" last stock pail card in first line
+            if (lineTo.size() > 0) {
+                lineTo.get(lineTo.size() - 1).isOpen = true;
+            }
+
+            //add "empty" card on in blank line
+            if (lineFrom.isEmpty()) {
+                Card card = new Card();
+                card.value = '';
+                card.isEmpty = true;
+                card.address = 'r_' + lineFrom + '_' + adrFrom;
+                lineFrom.add(card);
+            }
             return true;
         }
         System.debug('2.0');
         return false;
+    }
+
+    private static void removeBlankCardFromLine(List<Card> lineTo, Address adrTo) {
+        Card cardOld = lineTo.get(adrTo.position);
+        if (cardOld.isEmpty) {
+            lineTo.remove(adrTo.position);
+        }
     }
 
     private static List<String> getNearCards(String value) {
@@ -175,80 +364,80 @@ public with sharing class SolitaireSolver {
     }    
 
     private static void initAvailableMoves() {
+
+//        Description                   isEmpty Value	isKnown	isOpen
+//        Cell w/o card	                TRUE	""	    FALSE	TRUE
+//        Cell with closed unknown card	FALSE	""	    FALSE	FALSE
+//        Cell with closed known card	FALSE	2p	    TRUE	FALSE
+//        Cell with open unknown card	FALSE	""	    FALSE	TRUE
+//        Cell with open known card	    FALSE	2P	    TRUE	TRUE
+
+
+
         System.debug('Initiate Available Moves');
-        possiblePlaces.put('AP', new String[] {'H0','H1','H2','H3','2D','2H'}); 
-        possiblePlaces.put('AC', new String[] {'H0','H1','H2','H3','2D','2H'}); 
-        possiblePlaces.put('AD', new String[] {'H0','H1','H2','H3','2P','2C'});
-        possiblePlaces.put('AH', new String[] {'H0','H1','H2','H3','2P','2C'});
-        possiblePlaces.put('2P', new String[] {'3D','3H'});
-        possiblePlaces.put('2С', new String[] {'3D','3H'});
-        possiblePlaces.put('2D', new String[] {'3P','3C'});
-        possiblePlaces.put('2H', new String[] {'3P','3C'});
+        possiblePlaces.put('AP', new String[] {'F0','F1','F2','F3','2D','2H'});
+        possiblePlaces.put('AC', new String[] {'F0','F1','F2','F3','2D','2H'});
+        possiblePlaces.put('AD', new String[] {'F0','F1','F2','F3','2P','2C'});
+        possiblePlaces.put('AH', new String[] {'F0','F1','F2','F3','2P','2C'});
+        possiblePlaces.put('2P', new String[] {'3D','3H','AP'});
+        possiblePlaces.put('2С', new String[] {'3D','3H','AC'});
+        possiblePlaces.put('2D', new String[] {'3P','3C','AD'});
+        possiblePlaces.put('2H', new String[] {'3P','3C','AH'});
 
-        possiblePlaces.put('3P', new String[] {'4D','4H'});
-        possiblePlaces.put('3С', new String[] {'4D','4H'});
-        possiblePlaces.put('3D', new String[] {'4P','4C'});
-        possiblePlaces.put('3H', new String[] {'4P','4C'});
+        possiblePlaces.put('3P', new String[] {'4D','4H','2P'});
+        possiblePlaces.put('3С', new String[] {'4D','4H','2C'});
+        possiblePlaces.put('3D', new String[] {'4P','4C','2D'});
+        possiblePlaces.put('3H', new String[] {'4P','4C','2H'});
 
-        possiblePlaces.put('4P', new String[] {'5D','5H'});
-        possiblePlaces.put('4С', new String[] {'5D','5H'});
-        possiblePlaces.put('4D', new String[] {'5P','5C'});
-        possiblePlaces.put('4H', new String[] {'5P','5C'});
+        possiblePlaces.put('4P', new String[] {'5D','5H','3P'});
+        possiblePlaces.put('4С', new String[] {'5D','5H','3C'});
+        possiblePlaces.put('4D', new String[] {'5P','5C','3D'});
+        possiblePlaces.put('4H', new String[] {'5P','5C','3H'});
 
-        possiblePlaces.put('5P', new String[] {'6D','6H'});
-        possiblePlaces.put('5С', new String[] {'6D','6H'});
-        possiblePlaces.put('5D', new String[] {'6P','6C'});
-        possiblePlaces.put('5H', new String[] {'6P','6C'});
+        possiblePlaces.put('5P', new String[] {'6D','6H','4P'});
+        possiblePlaces.put('5С', new String[] {'6D','6H','4C'});
+        possiblePlaces.put('5D', new String[] {'6P','6C','4D'});
+        possiblePlaces.put('5H', new String[] {'6P','6C','4H'});
 
-        possiblePlaces.put('6P', new String[] {'7D','7H'});
-        possiblePlaces.put('6С', new String[] {'7D','7H'});
-        possiblePlaces.put('6D', new String[] {'7P','7C'});
-        possiblePlaces.put('6H', new String[] {'7P','7C'});
+        possiblePlaces.put('6P', new String[] {'7D','7H','5P'});
+        possiblePlaces.put('6С', new String[] {'7D','7H','5C'});
+        possiblePlaces.put('6D', new String[] {'7P','7C','5D'});
+        possiblePlaces.put('6H', new String[] {'7P','7C','5H'});
 
-        possiblePlaces.put('7P', new String[] {'8D','8H'});
-        possiblePlaces.put('7С', new String[] {'8D','8H'});
-        possiblePlaces.put('7D', new String[] {'8P','8C'});
-        possiblePlaces.put('7H', new String[] {'8P','8C'});
+        possiblePlaces.put('7P', new String[] {'8D','8H','6P'});
+        possiblePlaces.put('7С', new String[] {'8D','8H','6C'});
+        possiblePlaces.put('7D', new String[] {'8P','8C','6D'});
+        possiblePlaces.put('7H', new String[] {'8P','8C','6H'});
 
-        possiblePlaces.put('6P', new String[] {'7D','7H'});
-        possiblePlaces.put('6С', new String[] {'7D','7H'});
-        possiblePlaces.put('6D', new String[] {'7P','7C'});
-        possiblePlaces.put('6H', new String[] {'7P','7C'});
+        possiblePlaces.put('8P', new String[] {'9D','9H','7P'});
+        possiblePlaces.put('8С', new String[] {'9D','9H','7C'});
+        possiblePlaces.put('8D', new String[] {'9P','9C','7D'});
+        possiblePlaces.put('8H', new String[] {'9P','9C','7H'});
 
-        possiblePlaces.put('7P', new String[] {'8D','8H'});
-        possiblePlaces.put('7С', new String[] {'8D','8H'});
-        possiblePlaces.put('7D', new String[] {'8P','8C'});
-        possiblePlaces.put('7H', new String[] {'8P','8C'});
+        possiblePlaces.put('9P', new String[] {'10D','10H','8P'});
+        possiblePlaces.put('9С', new String[] {'10D','10H','8C'});
+        possiblePlaces.put('9D', new String[] {'10P','10C','8D'});
+        possiblePlaces.put('9H', new String[] {'10P','10C','8H'});
 
-        possiblePlaces.put('8P', new String[] {'9D','9H'});
-        possiblePlaces.put('8С', new String[] {'9D','9H'});
-        possiblePlaces.put('8D', new String[] {'9P','9C'});
-        possiblePlaces.put('8H', new String[] {'9P','9C'});
+        possiblePlaces.put('10P', new String[] {'JD','JH','9P'});
+        possiblePlaces.put('10С', new String[] {'JD','JH','9C'});
+        possiblePlaces.put('10D', new String[] {'JP','JC','9D'});
+        possiblePlaces.put('10H', new String[] {'JP','JC','9H'});
 
-        possiblePlaces.put('9P', new String[] {'10D','10H'});
-        possiblePlaces.put('9С', new String[] {'10D','10H'});
-        possiblePlaces.put('9D', new String[] {'10P','10C'});
-        possiblePlaces.put('9H', new String[] {'10P','10C'});
+        possiblePlaces.put('JP', new String[] {'QD','QH','10P'});
+        possiblePlaces.put('JС', new String[] {'QD','QH','10C'});
+        possiblePlaces.put('JD', new String[] {'QP','QC','10D'});
+        possiblePlaces.put('JH', new String[] {'QP','QC','10H'});
 
-        possiblePlaces.put('10P', new String[] {'JD','JH'});
-        possiblePlaces.put('10С', new String[] {'JD','JH'});
-        possiblePlaces.put('10D', new String[] {'JP','JC'});
-        possiblePlaces.put('10H', new String[] {'JP','JC'});
+        possiblePlaces.put('QP', new String[] {'KD','KH','JP'});
+        possiblePlaces.put('QС', new String[] {'KD','KH','JC'});
+        possiblePlaces.put('QD', new String[] {'KP','KC','JD'});
+        possiblePlaces.put('QH', new String[] {'KP','KC','JH'});
 
-        possiblePlaces.put('JP', new String[] {'QD','QH'});
-        possiblePlaces.put('JС', new String[] {'QD','QH'});
-        possiblePlaces.put('JD', new String[] {'QP','QC'});
-        possiblePlaces.put('JH', new String[] {'QP','QC'});
-
-        possiblePlaces.put('QP', new String[] {'KD','KH'});
-        possiblePlaces.put('QС', new String[] {'KD','KH'});
-        possiblePlaces.put('QD', new String[] {'KP','KC'});
-        possiblePlaces.put('QH', new String[] {'KP','KC'});
-
-        possiblePlaces.put('KP', new String[] {'R0','R1','R2','R3','R4','R5','R6'});
-        possiblePlaces.put('KС', new String[] {'R0','R1','R2','R3','R4','R5','R6'});
-        possiblePlaces.put('KD', new String[] {'R0','R1','R2','R3','R4','R5','R6'});
-        possiblePlaces.put('KH', new String[] {'R0','R1','R2','R3','R4','R5','R6'});
+        possiblePlaces.put('KP', new String[] {'R0','R1','R2','R3','R4','R5','R6','QP'});
+        possiblePlaces.put('KС', new String[] {'R0','R1','R2','R3','R4','R5','R6','QC'});
+        possiblePlaces.put('KD', new String[] {'R0','R1','R2','R3','R4','R5','R6','QD'});
+        possiblePlaces.put('KH', new String[] {'R0','R1','R2','R3','R4','R5','R6','QH'});
 
     } 
 }

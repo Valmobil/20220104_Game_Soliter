@@ -12,9 +12,8 @@ global with sharing class Address {
     global Integer position;
 
     public Address() {
-
     }
-    
+
     public Address(String addr) {
         Integer firstIndex = addr.indexOf('_');
         Integer secondIndex = addr.indexOf('_', firstIndex + 1);
@@ -22,5 +21,8 @@ global with sharing class Address {
         this.lineNumber = Integer.valueOf(addr.substring(firstIndex + 1,secondIndex));
         this.position = Integer.valueOf(addr.substring(secondIndex + 1, addr.length()));
     }
-
+    
+    public override String toString() {
+        return this.firstLetter + '_' + this.lineNumber + '_' + this.position;
+    }
 }

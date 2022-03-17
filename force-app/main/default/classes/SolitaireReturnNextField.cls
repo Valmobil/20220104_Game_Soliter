@@ -2,40 +2,27 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 01-24-2022
+ * @last modified on  : 03-17-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 global with sharing class SolitaireReturnNextField {
 
-
     public static final Integer FUNDAMENTAL_SIZE = 4;
     public static final Integer RUNNING_SIZE = 7;
     public static final Integer STOCK_PAIL_SIZE = 2;
-    public static final Integer STOCK_PAIL_LENGTH = 1;
-
+    public static final Integer STOCK_PAIL_LENGTH = 4;
     
     @AuraEnabled
     public static String openOneCard(String boardId, String cardAddress, String cardValue) {
-        //the method add opened card and create new board with it
 
-        System.debug('Open One Card');
-        System.debug(boardId);
-        System.debug(cardAddress);
-        System.debug(cardValue);
-        List<Solitair_Metadata__c> boardList = [select id, Solitair_Game_Id__c, Value__c 
+        //the method add opened card and generate new boards if possible
+        List<Solitair_Metadata__c> boardList = [select id, Solitair_Game_Id__c, Value__c
             from Solitair_Metadata__c where id = :boardId];
         if (boardList.size() == 0) {
             return '';
         } else {
             Solitair_Metadata__c boardDb = boardList.get(0);
-            System.debug('boardDb.value__c: ');
-            System.debug(boardDb.value__c);
             Board board = (Board) JSON.deserialize(boardDb.Value__c, Board.class);
-            System.debug('oldBoard:');
-            System.debug(board);
-            
-            // board.boardId = null;
-            // System.debug(board);
 
             //new set + new card
             defineLocationAndPutCard(board, cardAddress, cardValue);
@@ -44,33 +31,59 @@ global with sharing class SolitaireReturnNextField {
             board.boardId = boardDb.id;
             String result = JSON.serialize(board);
             boardDb.value__c = result;
-        
-
-            //Solitair_Metadata__c boardDbNew = mapperBoardToBoardDb(board.gameId, 'Board', result);
 
             update boardDb;
 
-            // board.boardId = boardDbNew.id;
-
             //calculate solutions
-            System.debug('runnignTrack before varians:');
-            System.debug(board.runnignTrack);
-            SolitaireSolver.calculateVariants(board);
+            List<Board> newBoards = new List<Board>();
+            newBoards.add(board);
 
-            //result = JSON.serialize(board);
+            while (newBoards.size() > 0) {
+                System.debug('Calculate variant for boards:');
+                System.debug(newBoards);
+                Board boardNext = newBoards.remove(0);
+                List<Board> boadsGenerated = SolitaireSolver.calculateVariants(boardNext);
+                if (boadsGenerated.size() > 0) {
+                    newBoards.addAll(boadsGenerated);
+                }
+            }
 
             return result;
         }
     }
 
-    
+    @AuraEnabled
+    public static String openSelectedBoard(String boardId) {
+
+        //the method add opened card and generate new boards if possible
+        System.debug('boardId: ' + boardId);
+        if (boardId.contains('-')) {
+            boardId = boardId.substring(0, boardId.indexOf('-'));
+        }
+        List<Solitair_Metadata__c> boardList = [select id, Solitair_Game_Id__c, Value__c
+        from Solitair_Metadata__c where id = :boardId];
+        if (boardList.size() == 0) {
+            return '';
+        } else {
+            Solitair_Metadata__c boardDb = boardList.get(0);
+            Board board = (Board) JSON.deserialize(boardDb.Value__c, Board.class);
+
+            // board.level++;
+            board.boardId = boardDb.id;
+            String result = JSON.serialize(board);
+
+            System.debug('board stock pail:');
+            System.debug(board.stockPail);
+            return result;
+        }
+    }
 
     private static void defineLocationAndPutCard(Board board, String address, String cardValue) {
         try {
             Address adrs = new Address(address);
             Card card = null; 
             if (adrs.firstLetter == 'r') {
-                card = board.runnignTrack.get(adrs.lineNumber).value.get(adrs.position);
+                card = board.runningTrack.get(adrs.lineNumber).value.get(adrs.position);
             } else if (adrs.firstLetter == 'f') {
                 card = board.fundamental.get(adrs.lineNumber).value.get(adrs.position);
             } else if (adrs.firstLetter == 's') {
@@ -96,7 +109,7 @@ global with sharing class SolitaireReturnNextField {
         board.gameId = game.id;
         board.parentId = null;
         board.level = 0;
-        board.runnignTrack = generateInitialSet('r', RUNNING_SIZE, 7);
+        board.runningTrack = generateInitialSet('r', RUNNING_SIZE, 7);
         board.fundamental = generateInitialSet('f', FUNDAMENTAL_SIZE, 1);
         board.stockPail = generateInitialSet('s', STOCK_PAIL_SIZE, STOCK_PAIL_LENGTH);
  
@@ -135,18 +148,18 @@ global with sharing class SolitaireReturnNextField {
                 if (type == 'r' && j == i) {
                     card.isOpen = true;
                     // remove after test
-                    if (i == 6) {
-                        card.value = 'AP';
-                    } else if (i == 1) {
-                        card.value = '2H';
+                    if (i == 1) {
+                        card.value = '9D';
                     } else if (i == 2) {
-                        card.value = '3C';
+                        card.value = 'JC';
                     } else if (i == 3) {
-                        card.value = 'AH';
+                        card.value = 'KD';
                     } else if (i == 4) {
-                        card.value = '2H';
+                        card.value = '5C';
                     } else if (i == 5) {
-                        card.value = '4C';
+                        card.value = 'AC';
+                    } else if (i == 6) {
+                        card.value = 'KP';
                     }
                     if (i < 7 && i > 0) {
                         card.isKnown = true;

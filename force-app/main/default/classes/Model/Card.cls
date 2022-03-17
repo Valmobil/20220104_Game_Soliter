@@ -7,7 +7,7 @@
 **/
 global with sharing class Card {
     public Card() {
-
+        this.value = '';
     }
     global Card(String address, String value) {
         this.address = address;

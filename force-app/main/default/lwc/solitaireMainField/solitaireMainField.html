@@ -2,14 +2,14 @@
   @description       : 
   @author            : ChangeMeIn@UserSettingsUnder.SFDoc
   @group             : 
-  @last modified on  : 01-21-2022
+  @last modified on  : 03-17-2022
   @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 -->
 <template>
     <div class="c-container fundamentals">
         <lightning-layout>
             <template for:each={fundamentals} for:item="line">
-                <lightning-layout-item key={line.id} class="runnign-track-card slds-p-around_medium slds-text-align_center" flexibility="auto, no-grow" padding="around-small">
+                <lightning-layout-item key={line.id} class="running-track-card slds-p-around_medium slds-text-align_center" flexibility="auto, no-grow" padding="around-small">
                     <template for:each={line.value} for:item="card">
                         <template if:true={card.isEmpty}>
                             <div key={card.address} class="slds-box">
@@ -23,21 +23,41 @@
                     </template>
                 </lightning-layout-item>
             </template>
-            <lightning-layout-item class="runnign-track-card slds-p-around_medium slds-text-align_center slds-grid_align-end" flexibility="auto, no-grow" padding="around-small">
+            <lightning-layout-item class="running-track-card slds-p-around_medium slds-text-align_center slds-grid_align-end" flexibility="auto, no-grow" padding="around-small">
                 <div class="custom_class">
                 </div>
             </lightning-layout-item>
             <template for:each={stocks} for:item="line">
-                <lightning-layout-item key={line.id} class="runnign-track-card slds-p-around_medium slds-text-align_center slds-grid_align-end" flexibility="auto, no-grow" padding="around-small">
+                <lightning-layout-item key={line.id} class="running-track-card slds-p-around_medium slds-text-align_center slds-grid_align-end" flexibility="auto, no-grow" padding="around-small">
                     <template for:each={line.value} for:item="card">
                         <template if:true={card.isEmpty}>
                             <div key={card.address} class="slds-box">
                             </div>
                         </template>
                         <template if:false={card.isEmpty}>
-                            <div key={card.address} class="slds-box box-open">
-                                {card.value}
-                            </div>
+                            <template if:true={card.isOpen}>
+                                <template if:false={card.isKnown}>
+                                    <lightning-combobox
+                                        class="box-input"
+                                        key={card.address}
+                                        data-item={card.address}
+                                        value={value}
+                                        options={options}
+                                        onchange={handleChange} >
+                                    </lightning-combobox>
+                                </template>
+                                <template if:true={card.isKnown}>
+                                    <template if:true={card.isOpen}>
+                                        <div key={card.address} class="slds-box box-open">
+                                            {card.value}
+                                        </div>
+                                    </template>
+                                </template>
+                            </template>
+                            <template if:false={card.isOpen}>
+                                <div key={card.address} class="slds-box box-closed">
+                                </div>
+                            </template>
                         </template>
                     </template>
                 </lightning-layout-item>
@@ -48,7 +68,7 @@
         <lightning-layout>
             <template if:true={cards}> 
                 <template for:each={cards} for:item="line">
-                    <lightning-layout-item key={line.id} class="runnign-track-card slds-p-around_medium slds-text-align_center" flexibility="auto, no-grow" padding="around-small">
+                    <lightning-layout-item key={line.id} class="running-track-card slds-p-around_medium slds-text-align_center" flexibility="auto, no-grow" padding="around-small">
                         <template for:each={line.value} for:item="card">
                             <template if:true={card.isEmpty}>
                                 <div key={card.address} class="slds-box box-empty">

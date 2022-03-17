@@ -1,0 +1,22 @@
+<!--
+  @description       : 
+  @author            : ChangeMeIn@UserSettingsUnder.SFDoc
+  @group             : 
+  @last modified on  : 01-25-2022
+  @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
+-->
+<template>
+    <div class="c-container fundamentals">
+        <lightning-layout multiple-rows>
+               <!-- Brand variant: Identifies the primary action in a group of buttons -->
+            <lightning-button variant="refresh" label="get boards" title="Primary action" onclick={handleClick} class="slds-m-left_x-small"></lightning-button>
+            <template for:each={results} for:item="result">
+                <p key = {result.id}>
+                    <lightning-layout-item key={result.id} flexibility="auto" padding="around-small">
+                        <a id={result.id} href="#" onclick={handleClickOnNextBoardLink}>{result.value}</a>
+                    </lightning-layout-item>
+                </p>
+            </template>
+        </lightning-layout>
+    </div>
+</template>
