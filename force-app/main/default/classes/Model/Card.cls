@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 01-24-2022
+ * @last modified on  : 03-18-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 global with sharing class Card {
@@ -11,6 +11,7 @@ global with sharing class Card {
     }
     global Card(String address, String value) {
         this.address = address;
+        this.addressOriginal = address;
         if (String.isEmpty(value)) {
             this.value = '';
             this.isKnown = false; 
@@ -25,6 +26,7 @@ global with sharing class Card {
     }
 
     global String address;
+    global String addressOriginal;
     global String value;
     global Boolean isEmpty = false;
     global Boolean isOpen = false;

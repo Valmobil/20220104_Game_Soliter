@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 03-17-2022
+ * @last modified on  : 03-22-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 public with sharing class SolitaireSolver {
@@ -14,15 +14,6 @@ public with sharing class SolitaireSolver {
         initAvailableMoves();
     }
 
-//    @future
-//    public static void calculateVariantsAsynchronously(String boardStr) {
-//        System.debug('@Future method call');
-//        System.debug(boardStr);
-//        Board board = (Board) JSON.deserialize(boardStr, Board.class);
-//        System.debug(board);
-//        calculateVariants(board);
-//    }
-
     public static List<Board> calculateVariants(Board board) {
 
         List<Board> boardsNew = new List<Board>();
@@ -33,20 +24,12 @@ public with sharing class SolitaireSolver {
             return new List<Board>();
         }
 
-        System.debug('Known cards:');
-        System.debug(knownCards);
-
         //take one card and check for possible movements
         List<PossibleMovement> possibleMovements = preparePossibleMovements(board, knownCards);
 
-        System.debug('Possible movements');
-        System.debug(possibleMovements);
-
-
         //generate new board for each movement
         for (PossibleMovement oneMove : possibleMovements) {
-            System.debug('Possible Movements:');
-            System.debug(oneMove);
+
             Address adrCardFrom = new Address(oneMove.cardFromAddress);
             Address adrCardTo = new Address(oneMove.cardToAddress);
             System.debug(adrCardFrom);
@@ -56,21 +39,77 @@ public with sharing class SolitaireSolver {
             System.debug('1.');
             if(moveCards(newBoard, adrCardFrom, adrCardTo)) {
                 System.debug('2.');
-                String result = JSON.serialize(newBoard);
-                Solitair_Metadata__c boardDbNew = board.mapperBoardToBoardDb(board.gameId, 'Board', result);
-                insert boardDbNew;
+                newBoard.fundamental = normalizeFoundation(newBoard.fundamental);
+                newBoard.key = generateBoardVariantKey(newBoard);
+                if (haveNoSuchVariant(newBoard)) {
 
-                //run variant calculation
-                newBoard.boardId = boardDbNew.id;
-                boardsNew.add(newBoard);
+                    String result = JSON.serialize(newBoard);
+                    Solitair_Metadata__c boardDbNew = board.mapperBoardToBoardDb(board.gameId, 'Board', result, newBoard.key);
+                    insert boardDbNew;
+
+                    //run variant calculation
+                    newBoard.boardId = boardDbNew.id;
+                    boardsNew.add(newBoard);
+                }
             }
         }
         return boardsNew;
     }
 
+    public static String generateBoardVariantKey(Board board) {
+        String key;
+        key+= '_Run:';
+        key+= addCardValue(board.runningTrack);
+        
+        key+= '_Sto:';
+        key+= addCardValue(board.stockPail);
+
+        key+= '_Fun:';
+        key+= addCardValue(board.fundamental);
+
+        System.debug('Board Variant Key:');
+        System.debug(key);
+        return key;
+    }
+
+    private static String addCardValue(List<Line> pail) {
+        String str = '';
+        for (Line line : pail) {
+            for (Card card : line.value) {
+                if(card.isKnown) {
+                    str+= card.value;
+                } else {
+                    if (card.isOpen) {
+                        str+= 'NA';
+                    }
+                }
+            }
+        }
+        return str;
+    }
+
+
+    private static Boolean haveNoSuchVariant(Board board) {
+        System.debug('Have no such variant:');
+        System.debug(board.key);
+        List<Solitair_Metadata__c> boardList = [select id from Solitair_Metadata__c where Key__c = :board.key];
+        if (boardList.size() == 0) {
+            boardList = [select id, key__c from Solitair_Metadata__c where Solitair_Game_Id__c = :board.gameId];
+            System.debug('List of existing boards:');
+            for (Solitair_Metadata__c boardMy : boardList) {
+                System.debug(boardMy.id + '_' + boardMy.key__c);
+            }
+
+            System.debug('have no board');
+            return true;
+        } else {
+            System.debug('board exists');
+            return false;
+        }
+    }
+
     private static List<PossibleMovement> preparePossibleMovements(Board board, Map<String, String> knownCards) {
         List<PossibleMovement> possibleMovements = new List<PossibleMovement>();
-        System.debug('Possible movement calculation');
         
         //running track possible movements
         for (Line line : board.runningTrack) {
@@ -92,7 +131,6 @@ public with sharing class SolitaireSolver {
         //stock pale possible movements
         //move already open stock pale last card (left line)
         if(board.stockPail.size() > 1) {
-            System.debug('board.stockPail.size() == 1');
             Line line = board.stockPail.get(1);
             if(line.value.size() > 0) {
                 System.debug('line.value.size() > 0');
@@ -101,11 +139,7 @@ public with sharing class SolitaireSolver {
                 Line lineTo = board.stockPail.get(0);
                 Card cardTo = lineTo.value.get(lineTo.value.size() - 1);
                 if (cardTo.isKnown || cardTo.isEmpty) {
-                    System.debug('cardTo.isKnown');
-                    System.debug('card:');
-                    System.debug(card);
                     PossibleMovement pm = new PossibleMovement(card.value, card.address, cardTo.value, cardTo.address);
-                    System.debug('pm: ' + pm);
                     possibleMovements.add(pm);    
                 }
             }
@@ -123,14 +157,12 @@ public with sharing class SolitaireSolver {
                 if (addrTo.firstLetter == 'F') {
                     if ('F' != nearCard.substring(0,1) && card.value.charAt(card.value.length() - 1) != nearCard.charAt(nearCard.length() - 1)) {
                         //if Fundamental card has no same type
-                        System.debug('Exception from:' + card + ' to: ' + nearCard);
                         continue;
                     }
                 }
                 if (addrTo.firstLetter == 'R') {
                     if (card.value.charAt(card.value.length() - 1) == nearCard.charAt(nearCard.length() - 1)) {
                         //if Running card has same type
-                        System.debug('Exception from:' + card + ' to: ' + nearCard);
                         continue;
                     }
                 }
@@ -203,6 +235,13 @@ public with sharing class SolitaireSolver {
         return knownCards;
     }
 
+    private static void changeLineAddresses(Line line, Integer lineNum) {
+        for (Card card : line.value) {
+            Address addressNew = new Address(card.address);
+            addressNew.lineNumber = lineNum;
+            card.address = addressNew.toString();
+        }
+    }
 
     private static Boolean moveCards(Board board, Address adrFrom, Address adrTo) {
         // move fundamentals
@@ -226,7 +265,16 @@ public with sharing class SolitaireSolver {
             }
             // Move cards
             for (Integer i = adrFrom.position; i < lineFrom.size(); i++) {
-                lineTo.add(lineFrom.get(i));
+                Card card = lineFrom.get(i);
+
+                //change address (addressOriginal w/o changes)
+                Address addressNew = new Address(adrTo);
+                addressNew.position = lineTo.size();
+                card.address = addressNew.toString();
+                System.debug('New address: ' + card.address);
+                System.debug('Original address: ' + card.addressOriginal);   
+                //add card
+                lineTo.add(card);
             }
             for (Integer i = adrFrom.position; i < lineFrom.size(); i++) {
                 lineFrom.remove(adrFrom.position);
@@ -259,10 +307,15 @@ public with sharing class SolitaireSolver {
                 } 
             }
             // Move cards
-
             removeBlankCardFromLine(lineTo, adrTo);
+            Card card = lineFrom.get(adrFrom.position);
 
-            lineTo.add(lineFrom.get(adrFrom.position));
+            //change address (addressOriginal w/o changes)
+            Address addressNew = new Address(adrTo);
+            addressNew.position = lineTo.size();
+            card.address = addressNew.toString();
+
+            lineTo.add(card);
             lineFrom.remove(adrFrom.position);
 
             //"open" last but one card
@@ -272,15 +325,14 @@ public with sharing class SolitaireSolver {
 
             //add "empty" card on in blank line
             if (lineFrom.isEmpty()) {
-                Card card = new Card();
-                card.value = '';
-                card.isEmpty = true;
-                card.address = 'r_' + lineFrom + '_' + adrFrom;
-                lineFrom.add(card);
+                Card emptyCard = new Card();
+                emptyCard.value = '';
+                emptyCard.isEmpty = true;
+                emptyCard.address = 'r_' + lineFrom + '_' + adrFrom;
+                lineFrom.add(emptyCard);
             }
             return true;
         }
-
 
         // move stock pail
         if (adrFrom.firstLetter == 's') {
@@ -310,8 +362,16 @@ public with sharing class SolitaireSolver {
             // Move cards
             System.debug('Move ST');
             removeBlankCardFromLine(lineTo, adrTo);
+            Card card = lineFrom.get(adrFrom.position);
 
-            lineTo.add(lineFrom.get(adrFrom.position));
+            //change address (addressOriginal w/o changes)
+            Address addressNew = new Address(adrTo);
+            addressNew.position = lineTo.size();
+            card.address = addressNew.toString();
+            System.debug('New address: ' + card.address);
+            System.debug('Original address: ' + card.addressOriginal);
+
+            lineTo.add(card);
             lineFrom.remove(adrFrom.position);
 
             //"open" last stock pail card in first line
@@ -321,16 +381,43 @@ public with sharing class SolitaireSolver {
 
             //add "empty" card on in blank line
             if (lineFrom.isEmpty()) {
-                Card card = new Card();
-                card.value = '';
-                card.isEmpty = true;
-                card.address = 'r_' + lineFrom + '_' + adrFrom;
-                lineFrom.add(card);
+                Card emptyCard = new Card();
+                emptyCard.value = '';
+                emptyCard.isEmpty = true;
+                emptyCard.address = 'r_' + lineFrom + '_' + adrFrom;
+                lineFrom.add(emptyCard);
             }
             return true;
         }
         System.debug('2.0');
         return false;
+    }
+
+    public static List<Line> normalizeFoundation(List<Line> fundamentals) {
+        List<String> idealList = new List<String> {'P','C','D','H'};
+        List<Line> sortedList = new List<Line>();
+        //move not blank list
+        for (Integer i = 0; i < idealList.size(); i++) {
+            for (Integer j = 0; j < fundamentals.size(); j++) {
+                String value = fundamentals.get(j).value.get(0).value;
+                if (!String.isBlank(value) && value.substring(1,2) == idealList.get(i)) {
+                    sortedList.add(fundamentals.get(j));
+                
+                    //change line of address
+                    changeLineAddresses(fundamentals.get(j), sortedList.size() - 1);
+                }
+            }
+        }
+        //move blank lists
+        for (Integer i = 0; i < fundamentals.size(); i++) {
+            String value = fundamentals.get(i).value.get(0).value;
+            if (String.isBlank(value) || !idealList.contains(value.substring(1,2))) {
+                sortedList.add(fundamentals.get(i));
+            }
+        }
+        System.debug('Sorted foundations:');
+        System.debug(sortedList);
+        return sortedList;
     }
 
     private static void removeBlankCardFromLine(List<Card> lineTo, Address adrTo) {
@@ -440,4 +527,5 @@ public with sharing class SolitaireSolver {
         possiblePlaces.put('KH', new String[] {'R0','R1','R2','R3','R4','R5','R6','QH'});
 
     } 
+
 }

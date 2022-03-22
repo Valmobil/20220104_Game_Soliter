@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 01-23-2022
+ * @last modified on  : 03-18-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 global with sharing class Address {
@@ -22,6 +22,12 @@ global with sharing class Address {
         this.position = Integer.valueOf(addr.substring(secondIndex + 1, addr.length()));
     }
     
+    public Address(Address addr) {
+        this.firstLetter = addr.firstLetter;
+        this.lineNumber = addr.lineNumber;
+        this.position = addr.position;
+    }
+
     public override String toString() {
         return this.firstLetter + '_' + this.lineNumber + '_' + this.position;
     }

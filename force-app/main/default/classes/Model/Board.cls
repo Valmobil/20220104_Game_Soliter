@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 01-24-2022
+ * @last modified on  : 03-22-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 global with sharing class Board {
@@ -15,15 +15,17 @@ global with sharing class Board {
         newBoard.boardId = null;
         newBoard.gameId = this.gameId;
         newBoard.parentId = this.boardId;
+        newBoard.key = this.key;
         newBoard.level = this.level + 1;
         return newBoard;
     }
 
-    global Solitair_Metadata__c mapperBoardToBoardDb(Id gameId, String boardType, String jsonString) {
+    global Solitair_Metadata__c mapperBoardToBoardDb(Id gameId, String boardType, String jsonString, String key) {
         Solitair_Metadata__c boardDb = new Solitair_Metadata__c();
         boardDb.Solitair_Game_Id__c = gameId;
         boardDb.Type__c = boardType;
         boardDb.Value__c = jsonString;
+        boardDb.Key__c = key;
         return boardDb;
     }
 
@@ -35,4 +37,5 @@ global with sharing class Board {
     global List<Line> fundamental;
     global List<Line> stockPail;
     global List<Line> runningTrack;
+    global String key;
 }

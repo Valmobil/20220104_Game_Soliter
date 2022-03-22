@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 03-17-2022
+ * @last modified on  : 03-22-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 global with sharing class SolitaireReturnNextField {
@@ -29,6 +29,8 @@ global with sharing class SolitaireReturnNextField {
 
             // board.level++;
             board.boardId = boardDb.id;
+            board.key = SolitaireSolver.generateBoardVariantKey(board);
+            boardDb.key__c = board.key;         
             String result = JSON.serialize(board);
             boardDb.value__c = result;
 
@@ -72,8 +74,6 @@ global with sharing class SolitaireReturnNextField {
             board.boardId = boardDb.id;
             String result = JSON.serialize(board);
 
-            System.debug('board stock pail:');
-            System.debug(board.stockPail);
             return result;
         }
     }
@@ -112,13 +112,14 @@ global with sharing class SolitaireReturnNextField {
         board.runningTrack = generateInitialSet('r', RUNNING_SIZE, 7);
         board.fundamental = generateInitialSet('f', FUNDAMENTAL_SIZE, 1);
         board.stockPail = generateInitialSet('s', STOCK_PAIL_SIZE, STOCK_PAIL_LENGTH);
+        board.fundamental = SolitaireSolver.normalizeFoundation(board.fundamental);
+        board.key = SolitaireSolver.generateBoardVariantKey(board);
  
         String result = JSON.serialize(board);
 
         List<Solitair_Metadata__c> boardList = [select id, Solitair_Game_Id__c from Solitair_Metadata__c where Solitair_Game_Id__c = :board.boardId];
         if (boardList.size() == 0) {
-            System.debug('No boards');
-            Solitair_Metadata__c boardDb = board.mapperBoardToBoardDb(board.gameId, 'Board', result);
+            Solitair_Metadata__c boardDb = board.mapperBoardToBoardDb(board.gameId, 'Board', result, board.key);
             insert boardDb;
             board.boardId = boardDb.id;
         } else {
@@ -126,7 +127,6 @@ global with sharing class SolitaireReturnNextField {
             board.boardId = boardList.get(0).id;
         }
         result = JSON.serialize(board);
-        System.debug('Result to LWC: ' + result);
         return result;
     }
 
@@ -177,7 +177,6 @@ global with sharing class SolitaireReturnNextField {
         if (type == 's') {
             System.debug('Type: s' + ' Lines:' + lines);
         }
-
         return lines;
     }
 }
