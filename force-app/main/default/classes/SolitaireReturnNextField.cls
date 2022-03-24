@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 03-22-2022
+ * @last modified on  : 03-23-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 global with sharing class SolitaireReturnNextField {
@@ -10,7 +10,7 @@ global with sharing class SolitaireReturnNextField {
     public static final Integer FUNDAMENTAL_SIZE = 4;
     public static final Integer RUNNING_SIZE = 7;
     public static final Integer STOCK_PAIL_SIZE = 2;
-    public static final Integer STOCK_PAIL_LENGTH = 4;
+    public static final Integer STOCK_PAIL_LENGTH = 3;
     
     @AuraEnabled
     public static String openOneCard(String boardId, String cardAddress, String cardValue) {
