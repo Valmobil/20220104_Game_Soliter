@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 03-23-2022
+ * @last modified on  : 04-05-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 global with sharing class SolitaireReturnNextField {
@@ -10,18 +10,23 @@ global with sharing class SolitaireReturnNextField {
     public static final Integer FUNDAMENTAL_SIZE = 4;
     public static final Integer RUNNING_SIZE = 7;
     public static final Integer STOCK_PAIL_SIZE = 2;
-    public static final Integer STOCK_PAIL_LENGTH = 3;
+    public static final Integer STOCK_PAIL_LENGTH = 7;
     
     @AuraEnabled
-    public static String openOneCard(String boardId, String cardAddress, String cardValue) {
+    public static String openOneCard(Id gameId, Id boardId, String cardAddress, String cardValue) {
+
+        System.debug('Open One Card - method:');
+        System.debug('gameId:' + gameId + '_cardAddress:' + cardAddress + '_cardValue:' + cardValue);
 
         //the method add opened card and generate new boards if possible
         List<Solitair_Metadata__c> boardList = [select id, Solitair_Game_Id__c, Value__c
-            from Solitair_Metadata__c where id = :boardId];
-        if (boardList.size() == 0) {
-            return '';
-        } else {
-            Solitair_Metadata__c boardDb = boardList.get(0);
+            from Solitair_Metadata__c where Solitair_Game_Id__c = :gameId and completed__c = false];
+        String result = '';
+
+        SolitaireSolver.printList('List of boards for update:', boardList);
+        
+        for(Solitair_Metadata__c boardDb : boardList) {
+
             Board board = (Board) JSON.deserialize(boardDb.Value__c, Board.class);
 
             //new set + new card
@@ -30,10 +35,37 @@ global with sharing class SolitaireReturnNextField {
             // board.level++;
             board.boardId = boardDb.id;
             board.key = SolitaireSolver.generateBoardVariantKey(board);
-            boardDb.key__c = board.key;         
-            String result = JSON.serialize(board);
-            boardDb.value__c = result;
+            boardDb.key__c = board.key;
 
+            if (!SolitaireSolver.haveNoSuchVariant(board)) {
+                //if db contains board with same key, delete ones with larger level
+                List<Solitair_Metadata__c> boardListExist = [select id, value__c from Solitair_Metadata__c where Key__c = :board.key and Solitair_Game_Id__c = :board.gameId];
+                for (Solitair_Metadata__c boardExistDb : boardListExist) {
+                    Board boardExist = (Board) JSON.deserialize(boardExistDb.Value__c, Board.class);
+                    if (boardExist.level >= board.level) {
+                        if (board.boardId != boardExistDb.id) {
+                            delete boardExistDb;
+                        }
+                    } else {
+                        delete boardDb;
+                        boardDb = boardExistDb;
+                        board = boardExist;
+                        if (board.boardId.equals(boardId)) {   
+                            boardId = boardExistDb.id;
+                        }
+                    }
+                }
+            }
+            
+            if (board.boardId.equals(boardId)) {    
+                //refresh result ony for called boardId     
+                result = JSON.serialize(board);
+            }
+            boardDb.value__c = JSON.serialize(board);
+            boardDb.completed__c = false;
+
+            System.debug('Update completed field:');
+            System.debug(boardDb);
             update boardDb;
 
             //calculate solutions
@@ -49,10 +81,11 @@ global with sharing class SolitaireReturnNextField {
                     newBoards.addAll(boadsGenerated);
                 }
             }
-
-            return result;
         }
+
+        return result;
     }
+
 
     @AuraEnabled
     public static String openSelectedBoard(String boardId) {
@@ -68,33 +101,45 @@ global with sharing class SolitaireReturnNextField {
             return '';
         } else {
             Solitair_Metadata__c boardDb = boardList.get(0);
+            System.debug('Board db:');
+            System.debug(boardDb);
+
             Board board = (Board) JSON.deserialize(boardDb.Value__c, Board.class);
 
+            System.debug('Board:');
+            System.debug(board);
             // board.level++;
             board.boardId = boardDb.id;
+            board.gameId = boardDb.Solitair_Game_Id__c;
             String result = JSON.serialize(board);
 
+            System.debug('Board result:');
+            System.debug(result);
             return result;
         }
     }
 
     private static void defineLocationAndPutCard(Board board, String address, String cardValue) {
-        try {
-            Address adrs = new Address(address);
-            Card card = null; 
-            if (adrs.firstLetter == 'r') {
-                card = board.runningTrack.get(adrs.lineNumber).value.get(adrs.position);
-            } else if (adrs.firstLetter == 'f') {
-                card = board.fundamental.get(adrs.lineNumber).value.get(adrs.position);
-            } else if (adrs.firstLetter == 's') {
-                card = board.stockPail.get(adrs.lineNumber).value.get(adrs.position);
-            }
-            card.value = cardValue;
-            card.isKnown = !String.isEmpty(cardValue);
-        } catch (Exception e) {
-            System.debug('Cell Address: ' + address);
+        if (!setCardValue(board.stockPail, address, cardValue)) {
+            if (!setCardValue(board.fundamental, address, cardValue)) {
+                setCardValue(board.runningTrack, address, cardValue);
+            }    
         }
     }
+
+    private static Boolean setCardValue(List<Line> inputLine, String address, String CardValue) {
+        for (Line line : inputLine) {
+            for (Card card : line.value) {
+                if (card.addressOriginal == address) {
+                    card.value = cardValue;
+                    card.isKnown = true;  
+                    return true;          
+                }
+            }
+        }
+        return false;
+    }
+
 
     @AuraEnabled
     public static String getInitialBoard() {

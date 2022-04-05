@@ -12,7 +12,6 @@ export default class SolitaireRightFrame extends LightningElement {
     gameId;
 
     connectedCallback() {
-        console.log('1.')
         this.subscribeToMessageChannel();
     }
 
@@ -57,14 +56,16 @@ export default class SolitaireRightFrame extends LightningElement {
         getResults({gameId: this.gameId})
             .then((result) => {
                 this.results = JSON.parse(result);
-
             })
             .catch((error) => {
                 this.error = error;
                 this.contacts = undefined;
             });
     }
-
+    
+    get totalCardsClass() {
+        return `${completed ? "bold" : "normal"}`;
+    }
 
 //    async getResultsFromApex(gameId) {
 //        try {

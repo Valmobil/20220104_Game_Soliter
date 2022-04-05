@@ -2,7 +2,7 @@
   @description       : 
   @author            : ChangeMeIn@UserSettingsUnder.SFDoc
   @group             : 
-  @last modified on  : 03-17-2022
+  @last modified on  : 04-01-2022
   @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 -->
 <template>
@@ -31,7 +31,7 @@
                 <lightning-layout-item key={line.id} class="running-track-card slds-p-around_medium slds-text-align_center slds-grid_align-end" flexibility="auto, no-grow" padding="around-small">
                     <template for:each={line.value} for:item="card">
                         <template if:true={card.isEmpty}>
-                            <div key={card.address} class="slds-box">
+                            <div key={card.address} class="slds-box app-stock-pail">
                             </div>
                         </template>
                         <template if:false={card.isEmpty}>
@@ -40,7 +40,7 @@
                                     <lightning-combobox
                                         class="box-input"
                                         key={card.address}
-                                        data-item={card.address}
+                                        data-item={card.addressOriginal}
                                         value={value}
                                         options={options}
                                         onchange={handleChange} >
@@ -48,14 +48,14 @@
                                 </template>
                                 <template if:true={card.isKnown}>
                                     <template if:true={card.isOpen}>
-                                        <div key={card.address} class="slds-box box-open">
+                                        <div key={card.address} class="slds-box app-stock-pail box-open">
                                             {card.value}
                                         </div>
                                     </template>
                                 </template>
                             </template>
                             <template if:false={card.isOpen}>
-                                <div key={card.address} class="slds-box box-closed">
+                                <div key={card.address} class="slds-box app-stock-pail box-closed">
                                 </div>
                             </template>
                         </template>

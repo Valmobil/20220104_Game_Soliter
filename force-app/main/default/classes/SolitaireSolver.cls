@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 03-24-2022
+ * @last modified on  : 04-05-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 public with sharing class SolitaireSolver {
@@ -20,17 +20,20 @@ public with sharing class SolitaireSolver {
 
         //set map of existing cards running tracks
         Map<String, String> knownCards = collectExistingCardsList(board);
+        printList('Known cards:', knownCards);
         if (knownCards == null) {
             return new List<Board>();
         }
 
+        //If all variants already calculated put respective mark Completed = true;
+        Solitair_Metadata__c boardDb = new Solitair_Metadata__c();
+        boardDb.id = board.boardId;
+        boardDb.completed__c = true;
+        update boardDb;
+
         //take one card and check for possible movements
         List<PossibleMovement> possibleMovements = preparePossibleMovements(board, knownCards);
-
-        printList('Possible movements:', possibleMovements);
-        if (possibleMovements.size() > 10) {
-            return null;
-        }
+        // printList('Possible movements:', possibleMovements);
 
 
         //generate new board for each movement
@@ -38,12 +41,9 @@ public with sharing class SolitaireSolver {
             
             Address adrCardFrom = new Address(oneMove.cardFromAddress);
             Address adrCardTo = new Address(oneMove.cardToAddress);
-            System.debug(adrCardFrom);
-            System.debug(adrCardTo);
             Board newBoard = board.cloneBoard();
             newBoard.lastMove = board.level + '.' + oneMove.cardFromValue + '(' + adrCardFrom.toString() + ')->' + oneMove.cardToValue + '(' + adrCardTo.toString() + ')';
             if(moveCards(newBoard, adrCardFrom, adrCardTo)) {
-
                 newBoard.fundamental = normalizeFoundation(newBoard.fundamental);
                 newBoard.key = generateBoardVariantKey(newBoard);
                 if (haveNoSuchVariant(newBoard)) {
@@ -55,10 +55,6 @@ public with sharing class SolitaireSolver {
                     //run variant calculation
                     newBoard.boardId = boardDbNew.id;
                     boardsNew.add(newBoard);
-                }
-                if (boardsNew.size() > 10) {
-                    System.debug('Limit q-ty of boards:' + boardsNew.size());
-                    break;
                 }
             }
         }
@@ -86,7 +82,7 @@ public with sharing class SolitaireSolver {
         for (Line line : pail) {
             str+= '_';
             for (Card card : line.value) {
-                if(card.isKnown) {
+                if(card.isKnown && card.isOpen) {
                     str+= card.value;
                 } else {
                     if (card.isOpen) {
@@ -98,17 +94,15 @@ public with sharing class SolitaireSolver {
         return str;
     }
 
-    private static Boolean haveNoSuchVariant(Board board) {
+    public static Boolean haveNoSuchVariant(Board board) {
         System.debug('Have no such variant:');
         System.debug(board.key);
-        List<Solitair_Metadata__c> boardList = [select id from Solitair_Metadata__c where Key__c = :board.key and Solitair_Game_Id__c = :board.gameId];
-        if (boardList.size() == 0) {
-            boardList = [select id, key__c from Solitair_Metadata__c where Solitair_Game_Id__c = :board.gameId];
-            System.debug('List of existing boards:');
-            for (Solitair_Metadata__c boardMy : boardList) {
-                System.debug(boardMy.id + '_' + boardMy.key__c);
-            }
-
+        List<Solitair_Metadata__c> boardList = [select id, value__c from Solitair_Metadata__c where Key__c = :board.key and Solitair_Game_Id__c = :board.gameId];
+        // if (board.key == '2.9D(r_1_1)->10C(r_0_0)') {
+        //     boardList = [select id, key__c from Solitair_Metadata__c where Solitair_Game_Id__c = :board.gameId];
+        //     printList('List of existing boards:', boardList);
+        // }
+        if (boardList.size() == 0) {            
             System.debug('have no board');
             return true;
         } else {
@@ -171,7 +165,14 @@ public with sharing class SolitaireSolver {
         return possibleMovements;
     }
 
-    private static void printList(String name, List<Object> lst) {
+    public static void printList(String name, Map<String, String> myMap) {
+        if (myMap != null) {
+            printList(name, myMap.values());
+        }
+    }
+
+
+    public static void printList(String name, List<Object> lst) {
         System.debug(name);
         for (Object obj : lst) {
             System.debug(obj);
@@ -183,20 +184,22 @@ public with sharing class SolitaireSolver {
         List<String> nearCards = getNearCards(card.value);
         for (String nearCard : nearCards) {
             if (knownCards.containsKey(nearCard)) {
+             
                 String address = knownCards.get(nearCard);
                 Address addrTo = new Address(address);
+
                 if (addrTo.firstLetter == 'F') {
                     if ('F' != nearCard.substring(0,1) && card.value.charAt(card.value.length() - 1) != nearCard.charAt(nearCard.length() - 1)) {
                         //if Fundamental card has no same type
                         continue;
                     }
                 }
-                if (addrTo.firstLetter == 'R') {
-                    if (card.value.charAt(card.value.length() - 1) == nearCard.charAt(nearCard.length() - 1)) {
-                        //if Running card has same type
-                        continue;
-                    }
-                }
+                // if (addrTo.firstLetter == 'R') {
+                //     if (card.value.charAt(card.value.length() - 1) == nearCard.charAt(nearCard.length() - 1)) {
+                //         //if Running card has same type
+                //         continue;
+                //     }
+                // }
                 PossibleMovement pm = new PossibleMovement(card.value, card.address, nearCard, address);
                 possibleMovements.add(pm);
             }
@@ -221,7 +224,7 @@ public with sharing class SolitaireSolver {
                     //if cell is blank fill with virtual card name
                     cardName = 'R' + i;
                 }
-                if (card.isKnown || card.isEmpty) {
+                if ((card.isKnown && card.isOpen) || card.isEmpty ) {
                     //add only known cards and blank cells
                     knownCards.put(card.value, card.address);
                 }
@@ -245,24 +248,23 @@ public with sharing class SolitaireSolver {
         }
 
         //collect available cards in stock pail
-        for (Integer i = 0; i < board.stockPail.size(); i++) {
-            Line line = board.stockPail.get(i);
-            for (Card card : line.value) {
-                if (card.isKnown == false && card.isOpen) {
-                    //if we have at least one open but unknown card, stop analysis
-                    return null;
-                }
-                String cardName = card.value;
-                if (String.isBlank(cardName) && card.isEmpty) {
-                    //if cell is blank fill with virtual card name
-                    cardName = 'S' + i;
-                }
-                if (card.isKnown || card.isEmpty) {
-                    //add only known cards and blank cells
-                    knownCards.put(card.value, card.address);
-                }
+        //take only one last card from zero line
+        Line line = board.stockPail.get(0);
+        if (line.value.size() > 0) {
+            Card card = line.value.get(line.value.size()-1);
+            String cardName = card.value;
+            if (card.isKnown == false && card.isOpen) {
+                //if we have at least one open but unknown card, stop analysis
+                return null;
             }
+            if (card.isKnown && card.isOpen) {
+                //add only known cards and blank cells
+                knownCards.put(card.value, card.address);
+            }
+        } else {
+            return null;
         }
+
         return knownCards;
     }
 
@@ -501,8 +503,6 @@ public with sharing class SolitaireSolver {
 //        Cell with closed known card	FALSE	2p	    TRUE	FALSE
 //        Cell with open unknown card	FALSE	""	    FALSE	TRUE
 //        Cell with open known card	    FALSE	2P	    TRUE	TRUE
-
-
 
         System.debug('Initiate Available Moves');
         possiblePlaces.put('AP', new String[] {'F0','F1','F2','F3','2D','2H'});

@@ -22,9 +22,19 @@ export default class SolitaireMainField extends LightningElement {
 
 
     connectedCallback() {
-        console.log('1.')
         this.subscribeToMessageChannel();
         this.getNextBoardAndUpdate();
+    }
+
+    renderedCallback() {
+        console.log('RenderCallBack: list of elements:');
+        let ni = this.template.querySelectorAll('.app-stock-pail');
+        ni.forEach(element => {
+            element.style.backgroundColor = 'red';
+            // element.style.position = 'absolute';
+            element.style.marginTop = '-30px';
+          console.log(element.tagName);  
+        });
     }
 
     subscribeToMessageChannel() {
@@ -48,11 +58,9 @@ export default class SolitaireMainField extends LightningElement {
 
     async openOneCardOnBoard(cardAddress, value) {
         try {
-            console.log(`boardId ${this.currentBoard.boardId} cardAddress ${cardAddress} cardValue: ${value}`)
-            const result = await openOneCard({boardId: this.currentBoard.boardId, cardAddress: cardAddress, cardValue: value})
+            console.log(`gameId ${this.currentBoard.gameId} cardAddress ${cardAddress} cardValue: ${value}`)
+            const result = await openOneCard({gameId: this.currentBoard.gameId, boardId: this.currentBoard.boardId, cardAddress: cardAddress, cardValue: value})
             this.currentBoard = JSON.parse(result);
-            console.log("Current board:")
-            console.log(this.currentBoard)
             this.alreadyUsed.add(value);
 
             //fire event for right frame on result update
@@ -60,14 +68,11 @@ export default class SolitaireMainField extends LightningElement {
                 operator: 'result',
                 constant: this.currentBoard.gameId
               };
-              console.log('Result event initiator: ');
-              console.log(payload);
               publish(this.messageContext, SOLITAIRE_UPDATE_CHANNEL, payload);
         } catch(error) { 
             console.log('!!!error on backend!!!')
             this.error = error; 
         };
-        console.log(this.currentBoard);
         this.initHtml(this.currentBoard);
     }
 
@@ -75,13 +80,8 @@ export default class SolitaireMainField extends LightningElement {
         try {
             console.log('getInitialBoard:');
             const result = await getInitialBoard();
-            console.log('result: ' + result);
             this.currentBoard = JSON.parse(result);
-            console.log(this.currentBoard);
             this.alreadyUsed = this.updateAlreadyInUseCardList(this.currentBoard);
-            console.log('already in use:');
-            console.log(this.alreadyUsed);
-
         } catch(error) {
             this.error = error; 
             console.log(error);
@@ -176,6 +176,7 @@ export default class SolitaireMainField extends LightningElement {
         console.log('this.handleChange')
         console.log(event.target.dataset.item);
         console.log(event.detail.value)
+        console.log(event.detail.address)
         this.openOneCardOnBoard(event.target.dataset.item, event.detail.value);
     }
 }
@@ -189,6 +190,7 @@ class BoardClass {
         this.fundamental = [[],[],[],[]];
         this.stockPail = [];
         this.runningTrack = [[],[],[],[],[],[],[]];
+        this.gameId;
     }
 }
 
