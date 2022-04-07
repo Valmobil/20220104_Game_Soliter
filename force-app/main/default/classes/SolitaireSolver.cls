@@ -2,12 +2,13 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 04-05-2022
+ * @last modified on  : 04-07-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 public with sharing class SolitaireSolver {
 
     public static Map<String, String[]> possiblePlaces = new Map<String, String[]>();
+    public static Set<String> boardListSet = new Set<String>();
 
     static {
         System.debug('Start Initiate Available Moves');
@@ -43,7 +44,7 @@ public with sharing class SolitaireSolver {
             Address adrCardTo = new Address(oneMove.cardToAddress);
             Board newBoard = board.cloneBoard();
             newBoard.lastMove = board.level + '.' + oneMove.cardFromValue + '(' + adrCardFrom.toString() + ')->' + oneMove.cardToValue + '(' + adrCardTo.toString() + ')';
-            if(moveCards(newBoard, adrCardFrom, adrCardTo)) {
+            if(moveCards(newBoard, adrCardFrom, adrCardTo, oneMove)) {
                 newBoard.fundamental = normalizeFoundation(newBoard.fundamental);
                 newBoard.key = generateBoardVariantKey(newBoard);
                 if (haveNoSuchVariant(newBoard)) {
@@ -51,6 +52,7 @@ public with sharing class SolitaireSolver {
                     String result = JSON.serialize(newBoard);
                     Solitair_Metadata__c boardDbNew = board.mapperBoardToBoardDb(board.gameId, 'Board', result, newBoard.key);
                     insert boardDbNew;
+                    boardListSet.add(newBoard.key);
 
                     //run variant calculation
                     newBoard.boardId = boardDbNew.id;
@@ -66,14 +68,12 @@ public with sharing class SolitaireSolver {
         key+= 'Run:';
         key+= addCardValue(board.runningTrack);
         
-        key+= 'Sto:';
+        key+= '_Sto:';
         key+= addCardValue(board.stockPail);
 
         key+= 'Fun:';
         key+= addCardValue(board.fundamental);
 
-        System.debug('Board Variant Key:');
-        System.debug(key);
         return key;
     }
 
@@ -95,14 +95,15 @@ public with sharing class SolitaireSolver {
     }
 
     public static Boolean haveNoSuchVariant(Board board) {
-        System.debug('Have no such variant:');
-        System.debug(board.key);
-        List<Solitair_Metadata__c> boardList = [select id, value__c from Solitair_Metadata__c where Key__c = :board.key and Solitair_Game_Id__c = :board.gameId];
-        // if (board.key == '2.9D(r_1_1)->10C(r_0_0)') {
-        //     boardList = [select id, key__c from Solitair_Metadata__c where Solitair_Game_Id__c = :board.gameId];
-        //     printList('List of existing boards:', boardList);
-        // }
-        if (boardList.size() == 0) {            
+
+        if (boardListSet.size() == 0) {
+            List<Solitair_Metadata__c> boardList = [select id, key__c from Solitair_Metadata__c where Solitair_Game_Id__c = :board.gameId];
+            for (Solitair_Metadata__c boardTmp : boardList) {
+                boardListSet.add(boardTmp.key__c);
+            }             
+        }
+
+        if (!boardListSet.contains(board.key)) {            
             System.debug('have no board');
             return true;
         } else {
@@ -148,20 +149,13 @@ public with sharing class SolitaireSolver {
                     card = lineTo.value.get(1);
                     Card cardTo = line.value.get(0);
                     
-                    System.debug('!!!! Rotate !!!!');
-                    System.debug('Card');
-                    System.debug(card);
-                    System.debug(cardTo);
-                    
                     PossibleMovement pm = new PossibleMovement(card.value, card.address, cardTo.value, cardTo.address);
                     possibleMovements.add(pm);  
                 }
             }
         }
 
-
-        printList('Possible movements list:', possibleMovements);
-        
+        // printList('Possible movements list:', possibleMovements);
         return possibleMovements;
     }
 
@@ -276,7 +270,7 @@ public with sharing class SolitaireSolver {
         }
     }
 
-    private static Boolean moveCards(Board board, Address adrFrom, Address adrTo) {
+    private static Boolean moveCards(Board board, Address adrFrom, Address adrTo, PossibleMovement oneMove) {
         System.debug('Move Cards from: ' + adrFrom.toString() + ' to: ' + adrTo.toString());
         
         // move fundamentals
@@ -296,7 +290,13 @@ public with sharing class SolitaireSolver {
                 if (lineTo.size() != adrTo.position + 1) {
                     //we can move only the last card in line
                     return false;
-                } 
+                }
+                if (!String.isBlank(oneMove.cardFromValue) && !String.isBlank(oneMove.cardToValue) 
+                && oneMove.cardFromValue.right(1) == oneMove.cardToValue.right(1)) {
+                    // if last cards' values coinsist - this variant only fro fundamentals
+                    return false;
+                }
+
             }
             // Move cards
             moveCardList(adrFrom, adrTo, lineFrom, lineTo);
@@ -326,6 +326,11 @@ public with sharing class SolitaireSolver {
                     //we can move only the last card in line
                     return false;
                 } 
+                if (!String.isBlank(oneMove.cardFromValue) && !String.isBlank(oneMove.cardToValue) 
+                    && oneMove.cardFromValue.right(1) == oneMove.cardToValue.right(1)) {
+                    // if last cards' values coinsist - this variant only fro fundamentals
+                    return false;
+                }
             }
             // Move cards
             removeBlankCardFromLine(lineTo, adrTo);
@@ -377,6 +382,11 @@ public with sharing class SolitaireSolver {
                 if (lineTo.size() != adrTo.position + 1) {
                     //we can move only the last card in line
                     return false;
+                }
+                if (!String.isBlank(oneMove.cardFromValue) && !String.isBlank(oneMove.cardToValue) 
+                && oneMove.cardFromValue.right(1) == oneMove.cardToValue.right(1)) {
+                    // if last cards' values coinsist - this variant only fro fundamentals
+                    return false;
                 } 
             }
 
@@ -408,24 +418,11 @@ public with sharing class SolitaireSolver {
         for (Integer i = adrFrom.position; i < lineFrom.size(); i++) {
             Card card = lineFrom.get(i);
 
-            if (lineFrom.size() > 10 || lineTo.size() > 10) {
-                printList('Line from:', lineFrom);
-                printList('Line to:', lineTo);
-                return;
-            }
-
             //change address (addressOriginal w/o changes)
             Address addressNew = new Address(adrTo);
             addressNew.position = lineTo.size();
             card.address = addressNew.toString(); 
             //add card
-            
-
-            if (lineFrom.size() > 10 || lineTo.size() > 10) {
-                printList('Line from:', lineFrom);
-                printList('Line to:', lineTo);
-                return;
-            }
 
             lineTo.add(card);
 
@@ -503,6 +500,8 @@ public with sharing class SolitaireSolver {
 //        Cell with closed known card	FALSE	2p	    TRUE	FALSE
 //        Cell with open unknown card	FALSE	""	    FALSE	TRUE
 //        Cell with open known card	    FALSE	2P	    TRUE	TRUE
+
+//      Cards with "_" (e.g. "_2H") at the beginning belong to possible movements to fundamentals
 
         System.debug('Initiate Available Moves');
         possiblePlaces.put('AP', new String[] {'F0','F1','F2','F3','2D','2H'});

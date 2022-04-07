@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 03-25-2022
+ * @last modified on  : 04-06-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 global with sharing class SolitaireResults {
@@ -37,16 +37,40 @@ global with sharing class SolitaireResults {
             // Cast argument to OpportunityWrapper
             Result compareToOppy = (Result)compareTo;
     
+            System.debug('CompareTo');
+            System.debug(compareToOppy.value);
+            System.debug(this.value);
+            String val0 = this.value;
+            String val1 = compareToOppy.value;
+            if (this.value == null) {
+                val0 = '0.0';
+            }
+            if (compareToOppy.value == null) {
+                val1 = '0.0';
+            }
             // The return value of 0 indicates that both elements are equal.
             Integer returnValue = 0;
-            if (this.value > compareToOppy.value) {
+            Integer q0 = Integer.valueOf(val0.SubStringBefore('.'));
+            Integer q1 = Integer.valueOf(val1.SubStringBefore('.'));
+            if (q0 > q1) {
+                //sort by level first
                 // Set return value to a positive value.
-                returnValue = 1;
-            } else if (this.value < compareToOppy.value) {
-                // Set return value to a negative value.
                 returnValue = -1;
+            } else if (q0 < q1) {
+                // Set return value to a negative value.
+                returnValue = 1;
+            } else if (q0 == q1) {
+                //sort by string
+                String s0 = val0.SubStringAfter('.');
+                String s1 = val1.SubStringAfter('.');
+                if (s0 > s1) {
+                    // Set return value to a positive value.
+                    returnValue = -1;
+                } else if (s0 < s1) {
+                    // Set return value to a negative value.
+                    returnValue = 1;
+                }
             }
-    
             return returnValue;       
         }
     }

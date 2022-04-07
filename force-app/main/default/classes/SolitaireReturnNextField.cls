@@ -167,6 +167,7 @@ global with sharing class SolitaireReturnNextField {
             Solitair_Metadata__c boardDb = board.mapperBoardToBoardDb(board.gameId, 'Board', result, board.key);
             insert boardDb;
             board.boardId = boardDb.id;
+            SolitaireSolver.boardListSet.add(board.key);
         } else {
             board.gameId = boardList.get(0).Solitair_Game_Id__c;
             board.boardId = boardList.get(0).id;
