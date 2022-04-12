@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 04-05-2022
+ * @last modified on  : 04-10-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 global with sharing class SolitaireReturnNextField {
@@ -92,9 +92,7 @@ global with sharing class SolitaireReturnNextField {
 
         //the method add opened card and generate new boards if possible
         System.debug('boardId: ' + boardId);
-        if (boardId.contains('-')) {
-            boardId = boardId.substring(0, boardId.indexOf('-'));
-        }
+
         List<Solitair_Metadata__c> boardList = [select id, Solitair_Game_Id__c, Value__c
         from Solitair_Metadata__c where id = :boardId];
         if (boardList.size() == 0) {

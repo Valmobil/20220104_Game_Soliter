@@ -2,7 +2,7 @@
   @description       : 
   @author            : ChangeMeIn@UserSettingsUnder.SFDoc
   @group             : 
-  @last modified on  : 03-24-2022
+  @last modified on  : 04-10-2022
   @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 -->
 <template>
@@ -13,12 +13,7 @@
             <template for:each={results} for:item="result">
                 <p key = {result.id}>
                     <lightning-layout-item key={result.id} flexibility="auto" padding="around-small">
-                        <template if:true={result.completed}>
-                            <a class="bold" id={result.id} href="#" onclick={handleClickOnNextBoardLink}>{result.value}</a>
-                        </template>
-                        <template if:false={result.completed}>
-                            <a class="normal" id={result.id} href="#" onclick={handleClickOnNextBoardLink}>{result.value}</a>
-                        </template>
+                         <a class={totalCardsClass} id={result.id} href="#" onclick={handleClickOnNextBoardLink}>{result.value}</a>
                     </lightning-layout-item>
                 </p>
             </template>

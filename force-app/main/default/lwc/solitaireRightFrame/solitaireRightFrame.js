@@ -9,7 +9,8 @@ export default class SolitaireRightFrame extends LightningElement {
     results = [];
     @wire(MessageContext)
     messageContext;
-    gameId;
+    currentBoardId;
+    resultIndex = 0;
 
     connectedCallback() {
         this.subscribeToMessageChannel();
@@ -28,43 +29,57 @@ export default class SolitaireRightFrame extends LightningElement {
         console.log(message);
         if (message.operator == 'result') {
             console.log('Result update event handler:');
-            this.gameId = message.constant;
-            console.log('GameId: ' + this.gameId);
-            //this.getResultsFromApex(gameId);
+            this.currentBoardId = message.constant;
         }
+        // console.log(this.currentBoardId);
     }
 
     handleClickOnNextBoardLink(event) {
         console.log('handle click to next board');
-        console.log(event.target.id);
-
+        this.currentBoardId = this.clearBoardId(event.target.id)
         const payload = {
             operator: 'open',
-            constant: event.target.id
+            constant: this.currentBoardId
         };
         publish(this.messageContext, SOLITAIRE_UPDATE_CHANNEL, payload);
-
+        this.getResultsFromApex();
         return false;
+    }
+
+    clearBoardId(boardId) {
+        if (boardId.includes('-')) {
+            boardId = boardId.substring(0, boardId.indexOf('-'));   
+        }
+        return boardId;
     }
 
     handleClick(event) {
         this.getResultsFromApex();
-        // this.clickedButtonLabel = event.target.label;
     }
 
     getResultsFromApex() {
-        getResults({gameId: this.gameId})
+        getResults({boardId: this.currentBoardId})
             .then((result) => {
                 this.results = JSON.parse(result);
+                console.log('Result list of boards:');
+                console.log(this.results);
             })
             .catch((error) => {
                 this.error = error;
                 this.contacts = undefined;
             });
     }
-    
+
     get totalCardsClass() {
-        return `${completed ? "bold" : "normal"}`;
+        //console.log('Class list: ');
+        let result = this.results[this.resultIndex];
+        if (this.results.length == this.resultIndex + 1) {
+            this.resultIndex = 0;
+        } else {
+            this.resultIndex++;
+        }
+        //console.log('Completed:' + result.completed + ' MinPath:' + result.minPath);
+        return `${result.completed ? "bold" : "normal"} ${result.minPath ? "min-path" : "not-path"}`;
     }
 
 //    async getResultsFromApex(gameId) {

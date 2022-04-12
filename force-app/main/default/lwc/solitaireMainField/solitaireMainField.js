@@ -29,11 +29,13 @@ export default class SolitaireMainField extends LightningElement {
     renderedCallback() {
         console.log('RenderCallBack: list of elements:');
         let ni = this.template.querySelectorAll('.app-stock-pail');
+        let i = 0;
         ni.forEach(element => {
-            element.style.backgroundColor = 'red';
-            // element.style.position = 'absolute';
-            element.style.marginTop = '-30px';
-          console.log(element.tagName);  
+            if (i > 0) {
+                element.style.marginTop = '-30px';
+            }
+            i++;
+            //console.log(element.tagName);  
         });
     }
 
@@ -66,7 +68,7 @@ export default class SolitaireMainField extends LightningElement {
             //fire event for right frame on result update
             const payload = {
                 operator: 'result',
-                constant: this.currentBoard.gameId
+                constant: this.currentBoard.boardId
               };
               publish(this.messageContext, SOLITAIRE_UPDATE_CHANNEL, payload);
         } catch(error) { 
@@ -100,7 +102,7 @@ export default class SolitaireMainField extends LightningElement {
         }
 
         for (let line of currentBoard.runningTrack) {
-            console.log(line['value'])
+            //console.log(line['value'])
             for (let card of line.value) {
                 if (card.isKnown) {
                     alreadyInUse.add(card.value);
@@ -122,7 +124,7 @@ export default class SolitaireMainField extends LightningElement {
             console.log('Open_Board:');
             console.log(boardId);
             const result = await openSelectedBoard({boardId: boardId});
-            console.log('result: ' + result);
+            // console.log('result: ' + result);
             this.currentBoard = JSON.parse(result);
             this.alreadyUsed = this.updateAlreadyInUseCardList(this.currentBoard);
         } catch(error) {
@@ -136,7 +138,7 @@ export default class SolitaireMainField extends LightningElement {
         if (curBoard) {
             let initialBoard = curBoard;
             console.log(`initialBoard: ${initialBoard}`);
-            console.log(initialBoard);
+            //console.log(initialBoard);
 
             //define fundamentals
             if (initialBoard.fundamental) {
@@ -150,8 +152,8 @@ export default class SolitaireMainField extends LightningElement {
             if(initialBoard.stockPail) {
                 this.stocks = initialBoard.stockPail;
             }
-            console.log("this stocks: ")
-            console.log(this.stocks);
+            //console.log("this stocks: ")
+            //console.log(this.stocks);
         } else {
             console.log('Current board is empty (in initHtml)');
         }
@@ -173,10 +175,10 @@ export default class SolitaireMainField extends LightningElement {
     }
 
     handleChange(event) {
-        console.log('this.handleChange')
-        console.log(event.target.dataset.item);
-        console.log(event.detail.value)
-        console.log(event.detail.address)
+        // console.log('this.handleChange')
+        // console.log(event.target.dataset.item);
+        // console.log(event.detail.value)
+        // console.log(event.detail.address)
         this.openOneCardOnBoard(event.target.dataset.item, event.detail.value);
     }
 }
