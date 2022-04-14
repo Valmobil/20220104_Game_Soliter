@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 04-10-2022
+ * @last modified on  : 04-14-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 global with sharing class SolitaireReturnNextField {
@@ -16,14 +16,52 @@ global with sharing class SolitaireReturnNextField {
     public static String openOneCard(Id gameId, Id boardId, String cardAddress, String cardValue) {
 
         System.debug('Open One Card - method:');
-        System.debug('gameId:' + gameId + '_cardAddress:' + cardAddress + '_cardValue:' + cardValue);
+        System.debug('gameId:' + gameId + 'boardId:' + boardId + '_cardAddress:' + cardAddress + '_cardValue:' + cardValue);
 
         //the method add opened card and generate new boards if possible
         List<Solitair_Metadata__c> boardList = [select id, Solitair_Game_Id__c, Value__c
             from Solitair_Metadata__c where Solitair_Game_Id__c = :gameId and completed__c = false];
-        String result = '';
+        
+        //find one current board
+        Integer index;
+        String result;
+        for (Integer i = 0; i < boardList.size(); i++) {
+            Solitair_Metadata__c boardDb = boardList.get(i);
+            if (boardId == boardDb.id) {
+                List<Solitair_Metadata__c> tmpList = new List<Solitair_Metadata__c>();
+                tmpList.add(boardDb);
+                result = startQuableBoardVarintsCalculation(boardList, boardId, cardAddress, cardValue);
+                index = i;
+                break;
+            }
+        }
 
-        SolitaireSolver.printList('List of boards for update:', boardList);
+        boardList.remove(index);
+
+        //run all other boards in queueable
+        Integer perEach = 2;
+        List<Solitair_Metadata__c> tmpList;
+        for (Integer i = 0; i < boardList.size(); i++) {
+            // if (Math.Mod(i, perEach) == 0)  {
+                tmpList = new List<Solitair_Metadata__c>();
+            // }
+            tmpList.add(boardList.get(i));
+            // if (Math.Mod(i, perEach) == perEach - 1 || i == boardList.size() - 1) {
+                Id jobID = System.enqueueJob(new SolitaireReturnNextFieldQueueble(tmpList, boardId, cardAddress, cardValue));
+            // }    
+        }
+        
+        // SolitaireSolver.printList('List of boards for update:', boardList);
+        // AsyncApexJob jobInfo = [SELECT Status,NumberOfErrors FROM AsyncApexJob WHERE Id=:jobID];
+        // System.debug('AsyncApexJobStatus:' + jobInfo);
+
+        return result;
+
+    }
+
+    public static String startQuableBoardVarintsCalculation(List<Solitair_Metadata__c> boardList, Id boardId, String cardAddress, String cardValue) {
+        
+        String result = '';
         
         for(Solitair_Metadata__c boardDb : boardList) {
 
@@ -42,22 +80,25 @@ global with sharing class SolitaireReturnNextField {
                 List<Solitair_Metadata__c> boardListExist = [select id, value__c from Solitair_Metadata__c where Key__c = :board.key and Solitair_Game_Id__c = :board.gameId];
                 for (Solitair_Metadata__c boardExistDb : boardListExist) {
                     Board boardExist = (Board) JSON.deserialize(boardExistDb.Value__c, Board.class);
-                    if (boardExist.level >= board.level) {
-                        if (board.boardId != boardExistDb.id) {
+                    boardExist.boardId = boardExistDb.id;
+                    if (board.boardId != boardExistDb.id) {
+                        if (boardExist.level > board.level) {
                             delete boardExistDb;
-                        }
-                    } else {
-                        delete boardDb;
-                        boardDb = boardExistDb;
-                        board = boardExist;
-                        if (board.boardId.equals(boardId)) {   
-                            boardId = boardExistDb.id;
+                        } else {
+                            try {
+                                delete boardDb;    
+                            } catch (Exception e) {
+                                System.debug('Cannot delete board:');
+                                System.debug(board.level + ' ' + board.key + ' ' + board.boardId);
+                                System.debug(boardExist.level + ' ' + boardExist.key + ' ' + boardExist.boardId);
+                            }                            
+                            return JSON.serialize(boardExist); 
                         }
                     }
                 }
             }
             
-            if (board.boardId.equals(boardId)) {    
+            if (boardDb.Id.equals(boardId)) {    
                 //refresh result ony for called boardId     
                 result = JSON.serialize(board);
             }
@@ -85,7 +126,6 @@ global with sharing class SolitaireReturnNextField {
 
         return result;
     }
-
 
     @AuraEnabled
     public static String openSelectedBoard(String boardId) {
@@ -117,7 +157,7 @@ global with sharing class SolitaireReturnNextField {
         }
     }
 
-    private static void defineLocationAndPutCard(Board board, String address, String cardValue) {
+    public static void defineLocationAndPutCard(Board board, String address, String cardValue) {
         if (!setCardValue(board.stockPail, address, cardValue)) {
             if (!setCardValue(board.fundamental, address, cardValue)) {
                 setCardValue(board.runningTrack, address, cardValue);

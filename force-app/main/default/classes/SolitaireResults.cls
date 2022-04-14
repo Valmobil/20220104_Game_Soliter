@@ -2,15 +2,16 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 04-11-2022
+ * @last modified on  : 04-13-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 global with sharing class SolitaireResults {
     
     @AuraEnabled
     public static String getResults(String boardId) {
+        System.debug('Get Result. BoardId: ' + boardId);
         List<Solitair_Metadata__c> gameIds = [select Solitair_Game_Id__c from Solitair_Metadata__c where id = :boardId];
-        // System.debug('Get Result. GameId: ' + gameId);
+        System.debug('GameIds: ' + gameIds);
         if (gameIds.size() > 0) {
             Id gameId = gameIds.get(0).Solitair_Game_Id__c;
             
