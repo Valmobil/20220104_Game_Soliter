@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 04-14-2022
+ * @last modified on  : 04-15-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 global with sharing class SolitaireReturnNextField {
@@ -10,51 +10,26 @@ global with sharing class SolitaireReturnNextField {
     public static final Integer FUNDAMENTAL_SIZE = 4;
     public static final Integer RUNNING_SIZE = 7;
     public static final Integer STOCK_PAIL_SIZE = 2;
-    public static final Integer STOCK_PAIL_LENGTH = 7;
+    public static final Integer STOCK_PAIL_LENGTH = 24;
     
     @AuraEnabled
     public static String openOneCard(Id gameId, Id boardId, String cardAddress, String cardValue) {
 
+        //the method add opened card and generate new boards if possible
         System.debug('Open One Card - method:');
         System.debug('gameId:' + gameId + 'boardId:' + boardId + '_cardAddress:' + cardAddress + '_cardValue:' + cardValue);
 
-        //the method add opened card and generate new boards if possible
-        List<Solitair_Metadata__c> boardList = [select id, Solitair_Game_Id__c, Value__c
-            from Solitair_Metadata__c where Solitair_Game_Id__c = :gameId and completed__c = false];
-        
         //find one current board
-        Integer index;
-        String result;
-        for (Integer i = 0; i < boardList.size(); i++) {
-            Solitair_Metadata__c boardDb = boardList.get(i);
-            if (boardId == boardDb.id) {
-                List<Solitair_Metadata__c> tmpList = new List<Solitair_Metadata__c>();
-                tmpList.add(boardDb);
-                result = startQuableBoardVarintsCalculation(boardList, boardId, cardAddress, cardValue);
-                index = i;
-                break;
-            }
-        }
-
-        boardList.remove(index);
-
-        //run all other boards in queueable
-        Integer perEach = 2;
-        List<Solitair_Metadata__c> tmpList;
-        for (Integer i = 0; i < boardList.size(); i++) {
-            // if (Math.Mod(i, perEach) == 0)  {
-                tmpList = new List<Solitair_Metadata__c>();
-            // }
-            tmpList.add(boardList.get(i));
-            // if (Math.Mod(i, perEach) == perEach - 1 || i == boardList.size() - 1) {
-                Id jobID = System.enqueueJob(new SolitaireReturnNextFieldQueueble(tmpList, boardId, cardAddress, cardValue));
-            // }    
-        }
+        List<Solitair_Metadata__c> boardList = [select id, Solitair_Game_Id__c, Value__c
+        from Solitair_Metadata__c where Solitair_Game_Id__c = :gameId and completed__c = false and id = :boardId];
+        String result = startQuableBoardVarintsCalculation(boardList, boardId, cardAddress, cardValue);
         
-        // SolitaireSolver.printList('List of boards for update:', boardList);
-        // AsyncApexJob jobInfo = [SELECT Status,NumberOfErrors FROM AsyncApexJob WHERE Id=:jobID];
-        // System.debug('AsyncApexJobStatus:' + jobInfo);
+        //process other boards in batches
+        String query = 'select id, Solitair_Game_Id__c, Value__c '+
+        'from Solitair_Metadata__c where Solitair_Game_Id__c = :gameId and completed__c = false and id != :boardId';
 
+        SolitaireReturnNextFieldBatch srnfb = new SolitaireReturnNextFieldBatch(query, gameId, boardId, cardAddress, cardValue);
+        Id batchId = Database.executeBatch(srnfb, 2);
         return result;
 
     }
@@ -77,7 +52,7 @@ global with sharing class SolitaireReturnNextField {
 
             if (!SolitaireSolver.haveNoSuchVariant(board)) {
                 //if db contains board with same key, delete ones with larger level
-                List<Solitair_Metadata__c> boardListExist = [select id, value__c from Solitair_Metadata__c where Key__c = :board.key and Solitair_Game_Id__c = :board.gameId];
+                List<Solitair_Metadata__c> boardListExist = [select id, value__c from Solitair_Metadata__c where Key__c = :board.key and Solitair_Game_Id__c = :board.gameId and isDeleted=false];
                 for (Solitair_Metadata__c boardExistDb : boardListExist) {
                     Board boardExist = (Board) JSON.deserialize(boardExistDb.Value__c, Board.class);
                     boardExist.boardId = boardExistDb.id;
@@ -85,13 +60,18 @@ global with sharing class SolitaireReturnNextField {
                         if (boardExist.level > board.level) {
                             delete boardExistDb;
                         } else {
-                            try {
-                                delete boardDb;    
-                            } catch (Exception e) {
-                                System.debug('Cannot delete board:');
-                                System.debug(board.level + ' ' + board.key + ' ' + board.boardId);
-                                System.debug(boardExist.level + ' ' + boardExist.key + ' ' + boardExist.boardId);
-                            }                            
+                            // try {
+                            delete boardDb;
+    //                         boardDb = boardExistDb;
+    //                         if (board.boardId.equals(boardId)) {   
+    //                             boardId = boardExistDb.id;
+    //                         }
+    //                         board = boardExist;;    
+                            // } catch (Exception e) {
+                            //     System.debug('Cannot delete board:');
+                            //     System.debug(board.level + ' ' + board.key + ' ' + board.boardId);
+                            //     System.debug(boardExist.level + ' ' + boardExist.key + ' ' + boardExist.boardId);
+                            // }                            
                             return JSON.serialize(boardExist); 
                         }
                     }

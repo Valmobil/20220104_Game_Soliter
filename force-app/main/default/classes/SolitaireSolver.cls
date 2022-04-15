@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 04-12-2022
+ * @last modified on  : 04-14-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 public with sharing class SolitaireSolver {
@@ -16,8 +16,6 @@ public with sharing class SolitaireSolver {
     }
 
     public static List<Board> calculateVariants(Board board) {
-
-        List<Board> boardsNew = new List<Board>();
 
         //set map of existing cards running tracks
         Map<String, String> knownCards = collectExistingCardsList(board);
@@ -36,6 +34,8 @@ public with sharing class SolitaireSolver {
         List<PossibleMovement> possibleMovements = preparePossibleMovements(board, knownCards);
         printList('Possible movements:', possibleMovements);
 
+        List<Board> boardsNew = new List<Board>();
+        List<Solitair_Metadata__c> boardsNewDb = new List<Solitair_Metadata__c>();
 
         //generate new board for each movement
         for (PossibleMovement oneMove : possibleMovements) {
@@ -55,7 +55,7 @@ public with sharing class SolitaireSolver {
 
                     String result = JSON.serialize(newBoard);
                     Solitair_Metadata__c boardDbNew = board.mapperBoardToBoardDb(board.gameId, 'Board', result, newBoard.key);
-                    insert boardDbNew;
+                    boardsNewDb.add(boardDbNew);
                     boardListSet.add(newBoard.key);
 
                     //run variant calculation
@@ -64,6 +64,12 @@ public with sharing class SolitaireSolver {
                 }
             }
         }
+
+        insert boardsNewDb;
+        for (Integer i = 0; i < boardsNewDb.size(); i++) {
+            boardsNew.get(i).boardId = boardsNewDb.get(i).id;
+        }
+
         return boardsNew;
     }
 
@@ -269,12 +275,6 @@ public with sharing class SolitaireSolver {
                         continue;
                     }
                 }
-                // if (addrTo.firstLetter == 'R') {
-                //     if (card.value.charAt(card.value.length() - 1) == nearCard.charAt(nearCard.length() - 1)) {
-                //         //if Running card has same type
-                //         continue;
-                //     }
-                // }
                 PossibleMovement pm = new PossibleMovement(card.value, card.address, nearCard, address);
                 possibleMovements.add(pm);
             }
