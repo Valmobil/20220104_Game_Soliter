@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 04-14-2022
+ * @last modified on  : 04-15-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 public with sharing class SolitaireSolver {
@@ -11,7 +11,7 @@ public with sharing class SolitaireSolver {
     public static Set<String> boardListSet = new Set<String>();
 
     static {
-        System.debug('Start Initiate Available Moves');
+        // System.debug('Start Initiate Available Moves');
         initAvailableMoves();
     }
 
@@ -86,11 +86,11 @@ public with sharing class SolitaireSolver {
 
                 Address address = new Address(card.address);
                 if (address.firstLetter != type) {
-                    System.debug('Error in ' + typeName + ' address first letter - should be "' + type + '": ' + card.address);
-                    System.debug('Board ' + typeName + ' line: ' + line);
-                    System.debug('Board id:' + board.boardId);
-                    System.debug('Board last move' + board.lastMove);
-                    System.debug('Board level: ' + board.level);
+                    // System.debug('Error in ' + typeName + ' address first letter - should be "' + type + '": ' + card.address);
+                    // System.debug('Board ' + typeName + ' line: ' + line);
+                    // System.debug('Board id:' + board.boardId);
+                    // System.debug('Board last move' + board.lastMove);
+                    // System.debug('Board level: ' + board.level);
                     
                     CalloutException e = new CalloutException();
                     e.setMessage('Error in ' + typeName + ' address - first letter');
@@ -98,11 +98,11 @@ public with sharing class SolitaireSolver {
                 }
                 
                 if (address.lineNumber != i) {
-                    System.debug('Error in ' + typeName + ' address line number - should be: ' + i + ' _ ' + card.address);
-                    System.debug('Board ' + typeName + ' line: ' + line);
-                    System.debug('Board id:' + board.boardId);
-                    System.debug('Board last move' + board.lastMove);
-                    System.debug('Board level: ' + board.level);
+                    // System.debug('Error in ' + typeName + ' address line number - should be: ' + i + ' _ ' + card.address);
+                    // System.debug('Board ' + typeName + ' line: ' + line);
+                    // System.debug('Board id:' + board.boardId);
+                    // System.debug('Board last move' + board.lastMove);
+                    // System.debug('Board level: ' + board.level);
 
                     CalloutException e = new CalloutException();
                     e.setMessage('Error in ' + typeName + ' address - line number');
@@ -110,11 +110,11 @@ public with sharing class SolitaireSolver {
                 }
 
                 if (address.position != j) {
-                    System.debug('Error in ' + typeName + ' address position - should be: ' + j + ' _ ' + card.address);
-                    System.debug('Board ' + typeName + ' line: ' + line);
-                    System.debug('Board id:' + board.boardId);
-                    System.debug('Board last move' + board.lastMove);
-                    System.debug('Board level: ' + board.level);
+                    // System.debug('Error in ' + typeName + ' address position - should be: ' + j + ' _ ' + card.address);
+                    // System.debug('Board ' + typeName + ' line: ' + line);
+                    // System.debug('Board id:' + board.boardId);
+                    // System.debug('Board last move' + board.lastMove);
+                    // System.debug('Board level: ' + board.level);
                     
                     CalloutException e = new CalloutException();
                     e.setMessage('Error in ' + typeName + ' address - position');
@@ -165,10 +165,10 @@ public with sharing class SolitaireSolver {
         }
 
         if (!boardListSet.contains(board.key)) {            
-            System.debug('have no board');
+            // System.debug('have no board');
             return true;
         } else {
-            System.debug('board exists');
+            // System.debug('board exists');
             return false;
         }
     }
@@ -244,24 +244,24 @@ public with sharing class SolitaireSolver {
     }
 
     public static void printList(String name, List<Object> lst) {
-        System.debug(name);
+        // System.debug(name);
         if (lst == null) {
-            System.debug('List == Null');
+            // System.debug('List == Null');
             return;
         }
         if (lst.size() == 0) {
-            System.debug('List is empty: Size() == 0');
+            // System.debug('List is empty: Size() == 0');
             return;
         }
         for (Object obj : lst) {
-            System.debug(obj);
+            // System.debug(obj);
         }
     }
 
 
     private static void findPossibleMovements(List<PossibleMovement> possibleMovements, Card card, Map<String, String> knownCards) {
         List<String> nearCards = getNearCards(card.value);
-        System.debug('Card value' + card.value);
+        // System.debug('Card value' + card.value);
         printList('Near card', nearCards);
         for (String nearCard : nearCards) {
             if (knownCards.containsKey(nearCard)) {
@@ -353,7 +353,7 @@ public with sharing class SolitaireSolver {
     }
 
     private static Boolean moveCards(Board board, Address adrFrom, Address adrTo, PossibleMovement oneMove) {
-        System.debug('Move Cards from: ' + adrFrom.toString() + ' to: ' + adrTo.toString());
+        // System.debug('Move Cards from: ' + adrFrom.toString() + ' to: ' + adrTo.toString());
         
         // move fundamentals
         if (adrFrom.firstLetter == 'f') {
@@ -445,7 +445,7 @@ public with sharing class SolitaireSolver {
 
         // move stock pail
         if (adrFrom.firstLetter == 's') {
-            System.debug('Move from Stock Pail = ');
+            // System.debug('Move from Stock Pail = ');
             List<Card> lineFrom = board.stockPail.get(adrFrom.lineNumber).value;
             List<Card> lineTo;
             if (adrTo.firstLetter == 's') {
@@ -474,7 +474,7 @@ public with sharing class SolitaireSolver {
             }
 
             // Move cards
-            System.debug('Move ST');
+            // System.debug('Move ST');
             removeBlankCardFromLine(lineTo, adrTo);
             moveCardList(adrFrom, adrTo, lineFrom, lineTo);
 
@@ -543,8 +543,8 @@ public with sharing class SolitaireSolver {
                 changeLineAddresses(fundamentals.get(i), sortedList.size() - 1);
             }
         }
-        System.debug('Sorted foundations:');
-        System.debug(sortedList);
+        // System.debug('Sorted foundations:');
+        // System.debug(sortedList);
         return sortedList;
     }
 
@@ -557,7 +557,7 @@ public with sharing class SolitaireSolver {
 
     private static List<String> getNearCards(String value) {
         String[] cardsValues = possiblePlaces.get(value);
-        System.debug('Value: ');
+        // System.debug('Value: ');
         printList('Get Near Card: ', cardsValues);
         if (cardsValues != null) {
             if (cardsValues.size() > 0) {
@@ -591,7 +591,7 @@ public with sharing class SolitaireSolver {
 
 //      Cards with "_" (e.g. "_2H") at the beginning belong to possible movements to fundamentals
 
-        System.debug('Initiate Available Moves');
+        // System.debug('Initiate Available Moves');
         possiblePlaces.put('AP', new String[] {'F0','F1','F2','F3','2D','2H'});
         possiblePlaces.put('AC', new String[] {'F0','F1','F2','F3','2D','2H'});
         possiblePlaces.put('AD', new String[] {'F0','F1','F2','F3','2P','2C'});

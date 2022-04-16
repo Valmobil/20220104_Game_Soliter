@@ -16,12 +16,13 @@ global with sharing class SolitaireReturnNextField {
     public static String openOneCard(Id gameId, Id boardId, String cardAddress, String cardValue) {
 
         //the method add opened card and generate new boards if possible
-        System.debug('Open One Card - method:');
-        System.debug('gameId:' + gameId + 'boardId:' + boardId + '_cardAddress:' + cardAddress + '_cardValue:' + cardValue);
+        // System.debug('Open One Card - method:');
+        // System.debug('gameId:' + gameId + 'boardId:' + boardId + '_cardAddress:' + cardAddress + '_cardValue:' + cardValue);
 
-        //find one current board
-        List<Solitair_Metadata__c> boardList = [select id, Solitair_Game_Id__c, Value__c
-        from Solitair_Metadata__c where Solitair_Game_Id__c = :gameId and completed__c = false and id = :boardId];
+        //update all boards with newly opened card        
+        List<Solitair_Metadata__c> boardList = updateAllAlligibleBoardsWithNewCard(gameId, boardId, cardAddress, cardValue);
+
+        //start variant calculation for one board = boardId
         String result = startQuableBoardVarintsCalculation(boardList, boardId, cardAddress, cardValue);
         
         //process other boards in batches
@@ -31,7 +32,40 @@ global with sharing class SolitaireReturnNextField {
         SolitaireReturnNextFieldBatch srnfb = new SolitaireReturnNextFieldBatch(query, gameId, boardId, cardAddress, cardValue);
         Id batchId = Database.executeBatch(srnfb, 2);
         return result;
+    }
 
+    private static List<Solitair_Metadata__c> updateAllAlligibleBoardsWithNewCard(Id gameId, Id boardId, String cardAddress, String cardValue) {
+        
+        //find all boards
+        List<Solitair_Metadata__c> boardList = [select id, Solitair_Game_Id__c, Value__c
+        from Solitair_Metadata__c where Solitair_Game_Id__c = :gameId];
+
+        List<Solitair_Metadata__c> boards = new List<Solitair_Metadata__c>(); 
+        for(Solitair_Metadata__c boardDb : boardList) {
+
+            Board board = (Board) JSON.deserialize(boardDb.Value__c, Board.class);
+
+            //new set + new card
+            if (defineLocationAndPutCard(board, cardAddress, cardValue)) {
+                boardDb.completed__c = false;
+            }
+
+            // board.level++;
+            board.boardId = boardDb.id;
+            board.key = SolitaireSolver.generateBoardVariantKey(board);
+            boardDb.key__c = board.key;
+            
+            if (board.boardId == boardId) {
+                boards.add(boardDb);
+            }
+            
+            boardDb.value__c = JSON.serialize(board);
+            
+        }
+
+        update boardList;
+
+        return boards;
     }
 
     public static String startQuableBoardVarintsCalculation(List<Solitair_Metadata__c> boardList, Id boardId, String cardAddress, String cardValue) {
@@ -42,9 +76,6 @@ global with sharing class SolitaireReturnNextField {
 
             Board board = (Board) JSON.deserialize(boardDb.Value__c, Board.class);
 
-            //new set + new card
-            defineLocationAndPutCard(board, cardAddress, cardValue);
-
             // board.level++;
             board.boardId = boardDb.id;
             board.key = SolitaireSolver.generateBoardVariantKey(board);
@@ -52,7 +83,8 @@ global with sharing class SolitaireReturnNextField {
 
             if (!SolitaireSolver.haveNoSuchVariant(board)) {
                 //if db contains board with same key, delete ones with larger level
-                List<Solitair_Metadata__c> boardListExist = [select id, value__c from Solitair_Metadata__c where Key__c = :board.key and Solitair_Game_Id__c = :board.gameId and isDeleted=false];
+                List<Solitair_Metadata__c> boardListExist = [select id, value__c from Solitair_Metadata__c 
+                    where Key__c = :board.key and Solitair_Game_Id__c = :board.gameId and isDeleted=false];
                 for (Solitair_Metadata__c boardExistDb : boardListExist) {
                     Board boardExist = (Board) JSON.deserialize(boardExistDb.Value__c, Board.class);
                     boardExist.boardId = boardExistDb.id;
@@ -62,16 +94,6 @@ global with sharing class SolitaireReturnNextField {
                         } else {
                             // try {
                             delete boardDb;
-    //                         boardDb = boardExistDb;
-    //                         if (board.boardId.equals(boardId)) {   
-    //                             boardId = boardExistDb.id;
-    //                         }
-    //                         board = boardExist;;    
-                            // } catch (Exception e) {
-                            //     System.debug('Cannot delete board:');
-                            //     System.debug(board.level + ' ' + board.key + ' ' + board.boardId);
-                            //     System.debug(boardExist.level + ' ' + boardExist.key + ' ' + boardExist.boardId);
-                            // }                            
                             return JSON.serialize(boardExist); 
                         }
                     }
@@ -82,20 +104,14 @@ global with sharing class SolitaireReturnNextField {
                 //refresh result ony for called boardId     
                 result = JSON.serialize(board);
             }
-            boardDb.value__c = JSON.serialize(board);
-            boardDb.completed__c = false;
-
-            System.debug('Update completed field:');
-            System.debug(boardDb);
-            update boardDb;
 
             //calculate solutions
             List<Board> newBoards = new List<Board>();
             newBoards.add(board);
 
             while (newBoards.size() > 0) {
-                System.debug('Calculate variant for boards:');
-                System.debug(newBoards);
+                // System.debug('Calculate variant for boards:');
+                // System.debug(newBoards);
                 Board boardNext = newBoards.remove(0);
                 List<Board> boadsGenerated = SolitaireSolver.calculateVariants(boardNext);
                 if (boadsGenerated.size() > 0) {
@@ -111,7 +127,7 @@ global with sharing class SolitaireReturnNextField {
     public static String openSelectedBoard(String boardId) {
 
         //the method add opened card and generate new boards if possible
-        System.debug('boardId: ' + boardId);
+        // System.debug('boardId: ' + boardId);
 
         List<Solitair_Metadata__c> boardList = [select id, Solitair_Game_Id__c, Value__c
         from Solitair_Metadata__c where id = :boardId];
@@ -119,55 +135,72 @@ global with sharing class SolitaireReturnNextField {
             return '';
         } else {
             Solitair_Metadata__c boardDb = boardList.get(0);
-            System.debug('Board db:');
-            System.debug(boardDb);
+            // System.debug('Board db:');
+            // System.debug(boardDb);
 
             Board board = (Board) JSON.deserialize(boardDb.Value__c, Board.class);
 
-            System.debug('Board:');
-            System.debug(board);
+            // System.debug('Board:');
+            // System.debug(board);
             // board.level++;
             board.boardId = boardDb.id;
             board.gameId = boardDb.Solitair_Game_Id__c;
             String result = JSON.serialize(board);
 
-            System.debug('Board result:');
-            System.debug(result);
+            // System.debug('Board result:');
+            // System.debug(result);
             return result;
         }
     }
 
-    public static void defineLocationAndPutCard(Board board, String address, String cardValue) {
-        if (!setCardValue(board.stockPail, address, cardValue)) {
-            if (!setCardValue(board.fundamental, address, cardValue)) {
-                setCardValue(board.runningTrack, address, cardValue);
+    public static Boolean defineLocationAndPutCard(Board board, String address, String cardValue) {
+        //Return true - if updated card is open
+        //Rerurn false - if updated card is closed or not updated
+        Integer result = setCardValue(board.stockPail, address, cardValue);
+        if (result == 0) {
+            result = setCardValue(board.fundamental, address, cardValue);
+            if (result == 0) {
+                result = setCardValue(board.runningTrack, address, cardValue);
+                if (result == 0) {
+                    return false;
+                }
             }    
         }
+        if (result == 2) {
+            return true;
+        }
+        return false;
     }
 
-    private static Boolean setCardValue(List<Line> inputLine, String address, String CardValue) {
+    private static Integer setCardValue(List<Line> inputLine, String address, String CardValue) {
+        //Retrun 0 - not updated
+        //Return 1 - updated but card closed
+        //Return 2 - update opened card
         for (Line line : inputLine) {
             for (Card card : line.value) {
                 if (card.addressOriginal == address) {
                     card.value = cardValue;
-                    card.isKnown = true;  
-                    return true;          
+                    card.isKnown = true;
+                    if (card.isOpen) {
+                        return 2;    
+                    }  
+                    return 1;          
                 }
             }
         }
-        return false;
+        return 0;
     }
 
 
     @AuraEnabled
     public static String getInitialBoard() {
         
-        System.debug('APEX: getInitialBoard');
+        // System.debug('APEX: getInitialBoard');
         // List<Solitair_Game__c> games = [select name from Solitair_Game__c];
         Solitair_Game__c game = new Solitair_Game__c();
         game.name = 'Game_Name_' + System.now();
         insert game;
-        System.debug('New game: ' + game.id);
+        // System.debug('New game: ' + game.id);
         Board board = new Board();
         board.gameId = game.id;
         board.parentId = null;
@@ -239,7 +272,7 @@ global with sharing class SolitaireReturnNextField {
             }
         }
         if (type == 's') {
-            System.debug('Type: s' + ' Lines:' + lines);
+            // System.debug('Type: s' + ' Lines:' + lines);
         }
         return lines;
     }

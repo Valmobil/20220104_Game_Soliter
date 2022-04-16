@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 04-13-2022
+ * @last modified on  : 04-15-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 public with sharing class SolitaireReturnNextFieldQueueble implements Queueable {
@@ -20,8 +20,8 @@ public with sharing class SolitaireReturnNextFieldQueueble implements Queueable 
     }
     public void execute(QueueableContext context) {
         
-        System.debug('Start Queueable Execution:');
-        System.debug('boardId:' + boardId + '_cardAddress:' + cardAddress + '_cardValue:' + cardValue);
+        // System.debug('Start Queueable Execution:');
+        // System.debug('boardId:' + boardId + '_cardAddress:' + cardAddress + '_cardValue:' + cardValue);
 
         SolitaireReturnNextField.startQuableBoardVarintsCalculation(this.boardList, this.boardId, this.cardAddress, this.cardValue);
 
