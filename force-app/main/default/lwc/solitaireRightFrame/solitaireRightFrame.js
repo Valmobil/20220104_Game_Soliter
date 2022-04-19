@@ -25,17 +25,17 @@ export default class SolitaireRightFrame extends LightningElement {
       }
 
     handleMessage(message) {
-        console.log('Event handler listener for event: "result"');
-        console.log(message);
+        //console.log('Event handler listener for event: "result"');
+        //console.log(message);
         if (message.operator == 'result') {
-            console.log('Result update event handler:');
+            //console.log('Result update event handler:');
             this.currentBoardId = message.constant;
         }
         // console.log(this.currentBoardId);
     }
 
     handleClickOnNextBoardLink(event) {
-        console.log('handle click to next board');
+        //console.log('handle click to next board');
         this.currentBoardId = this.clearBoardId(event.target.id)
         const payload = {
             operator: 'open',
@@ -57,12 +57,14 @@ export default class SolitaireRightFrame extends LightningElement {
         this.getResultsFromApex();
     }
 
-    getResultsFromApex() {
+
+
+    @wire getResultsFromApex() {
         getResults({boardId: this.currentBoardId})
             .then((result) => {
                 this.results = JSON.parse(result);
-                console.log('Result list of boards:');
-                console.log(this.results);
+                //console.log('Result list of boards:');
+                //console.log(this.results);
             })
             .catch((error) => {
                 this.error = error;
@@ -78,22 +80,9 @@ export default class SolitaireRightFrame extends LightningElement {
         } else {
             this.resultIndex++;
         }
-        //console.log('Completed:' + result.completed + ' MinPath:' + result.minPath);
-        return `${result.completed ? "bold" : "normal"} ${result.minPath ? "min-path" : "not-path"}`;
+        //console.log('Completed:');
+        //console.log(result);
+        return `${result.Completed__c ? "bold" : "normal"} ${result.Min_Path__c ? "min-path" : "not-path"}`;
     }
-
-//    async getResultsFromApex(gameId) {
-//        try {
-//            console.log('getResults:');
-////            const result = await getResults(gameId);
-//            const result = await testConnection(gameId);
-//            console.log('result: ' + result);
-////            this.results = JSON.parse(result);
-////            console.log(this.results);
-//        } catch(error) {
-//            this.error = error;
-//            console.log(error);
-//        };
-//    }
 
 }

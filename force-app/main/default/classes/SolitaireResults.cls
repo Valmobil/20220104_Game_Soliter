@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 04-15-2022
+ * @last modified on  : 04-19-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 global with sharing class SolitaireResults {
@@ -12,31 +12,41 @@ global with sharing class SolitaireResults {
         //System.debug('Get Result. BoardId: ' + boardId);
         List<Solitair_Metadata__c> gameIds = [select Solitair_Game_Id__c from Solitair_Metadata__c where id = :boardId];
         //System.debug('GameIds: ' + gameIds);
-        if (gameIds.size() > 0) {
-            Id gameId = gameIds.get(0).Solitair_Game_Id__c;
-            
-            List<Solitair_Metadata__c> boards = [select id, Solitair_Game_Id__c, value__c, completed__c from Solitair_Metadata__c where Solitair_Game_Id__c = :gameId];
-            
-            Set<String> minPathIds = calculateMinPath(boards, boardId);
+        Id gameId = gameIds.get(0).Solitair_Game_Id__c;
+        
+        generateResultTable(gameId, boardId);
+        
+        List<Solitair_Result__c> results = [select board_id__c, parent_board_id__c, last_move__c, completed__c, min_path__c 
+            from Solitair_Result__c Order by last_move__c desc ];
+        //SolitaireSolver.printList('Boards after sort:', results);
+        
+        return JSON.serialize(results);
+    }
 
-            // SolitaireSolver.printList('Boards before sort:', boards);
-            List<Result> results = new List<Result>();
-            Integer index = 0;
-            for (Solitair_Metadata__c boardDb : boards) {
-            Result res = new Result();
+    private static void generateResultTable(String gameId, String boardId) {
+        
+        List<Solitair_Metadata__c> boards = [select id, Solitair_Game_Id__c, value__c, completed__c from Solitair_Metadata__c where Solitair_Game_Id__c = :gameId];
+        
+        //Set<String> minPathIds = calculateMinPath(boards, boardId);
+        Set<String> minPathIds = new Set<String>();
+
+        // SolitaireSolver.printList('Boards before sort:', boards);
+        List<Solitair_Result__c> results = new List<Solitair_Result__c>();
+        Integer index = 0;
+        for (Solitair_Metadata__c boardDb : boards) {
+            Solitair_Result__c res = new Solitair_Result__c();
             Board board = (Board) JSON.deserialize(boardDb.value__c, Board.class);
-            res.id = boardDb.id;
-            res.value = board.lastMove;
-            res.completed = boardDb.completed__c;
-            res.minPath = minPathIds.contains(boardDb.id);
+            res.board_id__c = boardDb.id;
+            res.parent_board_id__c = board.parentId;
+            res.last_move__c = board.lastMove;
+            res.completed__c = boardDb.completed__c;
+            res.min_Path__c = minPathIds.contains(boardDb.id);
             results.add(res);
-            }
-            results.sort();
-            
-            SolitaireSolver.printList('Boards after sort:', results);
-            return JSON.serialize(results);
         }
-        return null;
+        List<Solitair_Result__c> res = [select id from Solitair_Result__c];
+        delete res;
+        
+        insert results;
     }
 
     private static Set<String> calculateMinPath(List<Solitair_Metadata__c> boardsDb, String boardId) {
@@ -69,7 +79,7 @@ global with sharing class SolitaireResults {
                 }
             }
         } while (found);
-        SolitaireSolver.printList('Path ids: ', ids);
+        //SolitaireSolver.printList('Path ids: ', ids);
         return ids;
         
     }

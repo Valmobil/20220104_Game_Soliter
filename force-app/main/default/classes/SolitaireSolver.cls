@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 04-15-2022
+ * @last modified on  : 04-19-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 public with sharing class SolitaireSolver {
@@ -19,7 +19,7 @@ public with sharing class SolitaireSolver {
 
         //set map of existing cards running tracks
         Map<String, String> knownCards = collectExistingCardsList(board);
-        printList('Known cards:', knownCards);
+        //printList('Known cards:', knownCards);
         if (knownCards == null) {
             return new List<Board>();
         }
@@ -32,35 +32,39 @@ public with sharing class SolitaireSolver {
 
         //take one card and check for possible movements
         List<PossibleMovement> possibleMovements = preparePossibleMovements(board, knownCards);
-        printList('Possible movements:', possibleMovements);
+        //printList('Possible movements:', possibleMovements);
 
         List<Board> boardsNew = new List<Board>();
         List<Solitair_Metadata__c> boardsNewDb = new List<Solitair_Metadata__c>();
 
         //generate new board for each movement
+        Boolean enableMoveFromFoundation = true;
         for (PossibleMovement oneMove : possibleMovements) {
-            
+
             Address adrCardFrom = new Address(oneMove.cardFromAddress);
             Address adrCardTo = new Address(oneMove.cardToAddress);
-            Board newBoard = board.cloneBoard();
-            newBoard.lastMove = board.level + '.' + oneMove.cardFromValue + '(' + adrCardFrom.toString() + ')->' + oneMove.cardToValue + '(' + adrCardTo.toString() + ')';
             
-            //checkCardAddress(newBoard);
-            if(moveCards(newBoard, adrCardFrom, adrCardTo, oneMove)) {
-                newBoard.fundamental = normalizeFoundation(newBoard.fundamental);
-                newBoard.key = generateBoardVariantKey(newBoard);
+            if (adrCardFrom.firstLetter != 'f' || enableMoveFromFoundation) {
+                Board newBoard = board.cloneBoard();
+                newBoard.lastMove = board.level + '.' + oneMove.cardFromValue + '(' + adrCardFrom.toString() + ')->' + oneMove.cardToValue + '(' + adrCardTo.toString() + ')';
+                
                 //checkCardAddress(newBoard);
+                if(moveCards(newBoard, adrCardFrom, adrCardTo, oneMove)) {
+                    newBoard.fundamental = normalizeFoundation(newBoard.fundamental);
+                    newBoard.key = generateBoardVariantKey(newBoard);
+                    //checkCardAddress(newBoard);
+    
+                    if (haveNoSuchVariant(newBoard)) {
+                        enableMoveFromFoundation = false;
+                        String result = JSON.serialize(newBoard);
+                        Solitair_Metadata__c boardDbNew = board.mapperBoardToBoardDb(board.gameId, 'Board', result, newBoard.key);
+                        boardsNewDb.add(boardDbNew);
+                        boardListSet.add(newBoard.key);
 
-                if (haveNoSuchVariant(newBoard)) {
-
-                    String result = JSON.serialize(newBoard);
-                    Solitair_Metadata__c boardDbNew = board.mapperBoardToBoardDb(board.gameId, 'Board', result, newBoard.key);
-                    boardsNewDb.add(boardDbNew);
-                    boardListSet.add(newBoard.key);
-
-                    //run variant calculation
-                    newBoard.boardId = boardDbNew.id;
-                    boardsNew.add(newBoard);
+                        //run variant calculation
+                        newBoard.boardId = boardDbNew.id;
+                        boardsNew.add(newBoard);
+                    }
                 }
             }
         }
@@ -185,6 +189,13 @@ public with sharing class SolitaireSolver {
             }
         }
 
+        //fundamental possible movements
+        //move only last card in a line
+        for (Line line : board.fundamental) {
+            Card card = line.value.get(line.value.size()-1);
+            findPossibleMovements(possibleMovements, card, knownCards);
+        }
+
         //stock pale possible movements
         //move already open stock pale last card (left line)
         if(board.stockPail.size() > 0) {
@@ -194,7 +205,7 @@ public with sharing class SolitaireSolver {
                 findPossibleMovements(possibleMovements, card, knownCards);
             }
         }
-        printList('Possible movements (draft):', possibleMovements);
+        //printList('Possible movements (draft):', possibleMovements);
 
 
         //stock pale possible movements
@@ -230,31 +241,31 @@ public with sharing class SolitaireSolver {
             for (String key : myMap.keySet()) {
                 myList.add(myMap.get(key) + '_ _' + key);
             }
-            printList(name, myList);
-        } else {
-            printList(name, (List<String>) null);
+            //printList(name, myList);
+        // } else {
+        //     printList(name, (List<String>) null);
         }
     }
 
     public static void printList(String name, Set<String> myMap) {
         if (myMap != null) {
             List<String> myList = new List<String>(myMap);
-            printList(name, myList);
+            //printList(name, myList);
         }
     }
 
     public static void printList(String name, List<Object> lst) {
-        // System.debug(name);
+        System.debug(name);
         if (lst == null) {
-            // System.debug('List == Null');
+            System.debug('List == Null');
             return;
         }
         if (lst.size() == 0) {
-            // System.debug('List is empty: Size() == 0');
+            System.debug('List is empty: Size() == 0');
             return;
         }
         for (Object obj : lst) {
-            // System.debug(obj);
+            System.debug(obj);
         }
     }
 
@@ -262,7 +273,7 @@ public with sharing class SolitaireSolver {
     private static void findPossibleMovements(List<PossibleMovement> possibleMovements, Card card, Map<String, String> knownCards) {
         List<String> nearCards = getNearCards(card.value);
         // System.debug('Card value' + card.value);
-        printList('Near card', nearCards);
+        //printList('Near card', nearCards);
         for (String nearCard : nearCards) {
             if (knownCards.containsKey(nearCard)) {
              
@@ -362,6 +373,10 @@ public with sharing class SolitaireSolver {
                 //we can move only the last card in line
                 return false;
             } 
+            if (adrTo.firstLetter == 'f') {
+                //we cannot move cards between fundamentals
+                return false;
+            }
             if (adrTo.firstLetter == 's') {
                 //we cannot move cards to stock pail
                 return false;
@@ -522,6 +537,9 @@ public with sharing class SolitaireSolver {
         List<String> idealList = new List<String> {'P','C','D','H'};
         List<Line> sortedList = new List<Line>();
         //move not blank list
+
+        //printList('Fundamentals: ', fundamentals);
+
         for (Integer i = 0; i < idealList.size(); i++) {
             for (Integer j = 0; j < fundamentals.size(); j++) {
                 String value = fundamentals.get(j).value.get(0).value;
@@ -558,7 +576,7 @@ public with sharing class SolitaireSolver {
     private static List<String> getNearCards(String value) {
         String[] cardsValues = possiblePlaces.get(value);
         // System.debug('Value: ');
-        printList('Get Near Card: ', cardsValues);
+        //printList('Get Near Card: ', cardsValues);
         if (cardsValues != null) {
             if (cardsValues.size() > 0) {
                 return cardsValues;

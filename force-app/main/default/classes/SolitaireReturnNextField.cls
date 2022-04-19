@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 04-15-2022
+ * @last modified on  : 04-19-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 global with sharing class SolitaireReturnNextField {
@@ -19,10 +19,38 @@ global with sharing class SolitaireReturnNextField {
         // System.debug('Open One Card - method:');
         // System.debug('gameId:' + gameId + 'boardId:' + boardId + '_cardAddress:' + cardAddress + '_cardValue:' + cardValue);
 
-        //update all boards with newly opened card        
-        List<Solitair_Metadata__c> boardList = updateAllAlligibleBoardsWithNewCard(gameId, boardId, cardAddress, cardValue);
+        //update current board with open card
+        List<Solitair_Metadata__c> boardList = [select id, Solitair_Game_Id__c, Value__c
+            from Solitair_Metadata__c where Solitair_Game_Id__c = :gameId and id = :boardId];
+        updateAllAlligibleBoardsWithNewCard(boardList, gameId, boardId, cardAddress, cardValue);
 
-        //start variant calculation for one board = boardId
+
+        //update all boards with newly opened card in batch  + calculate variants in batch       
+        startBatchForupdateAllAlligibleBoardsWithNewCard(gameId, boardId, cardAddress, cardValue);
+
+
+        //return updated board
+        boardList = [select id, Solitair_Game_Id__c, Value__c
+            from Solitair_Metadata__c where Solitair_Game_Id__c = :gameId and id = :boardId];
+        // String result = startQuableBoardVarintsCalculation(boardList, boardId, cardAddress, cardValue);
+        String result = boardList.get(0).value__c;
+        
+        // //process other boards in batches
+        // String query = 'select id, Solitair_Game_Id__c, Value__c '+
+        // 'from Solitair_Metadata__c where Solitair_Game_Id__c = :gameId and completed__c = false and id != :boardId';
+
+        // SolitaireReturnNextFieldBatch srnfb = new SolitaireReturnNextFieldBatch(query, gameId, boardId, cardAddress, cardValue);
+        // Id batchId = Database.executeBatch(srnfb, 2);
+        return result;
+    }
+
+
+    public static void startBoardsVariantsCalculation(Id gameId, Id boardId, String cardAddress, String cardValue) {
+
+        //System.debug('Start variants calculation:');
+
+        List<Solitair_Metadata__c> boardList = [select id, Solitair_Game_Id__c, Value__c
+        from Solitair_Metadata__c where Solitair_Game_Id__c = :gameId and id = :boardId];
         String result = startQuableBoardVarintsCalculation(boardList, boardId, cardAddress, cardValue);
         
         //process other boards in batches
@@ -31,14 +59,21 @@ global with sharing class SolitaireReturnNextField {
 
         SolitaireReturnNextFieldBatch srnfb = new SolitaireReturnNextFieldBatch(query, gameId, boardId, cardAddress, cardValue);
         Id batchId = Database.executeBatch(srnfb, 2);
-        return result;
+        // return result;
     }
 
-    private static List<Solitair_Metadata__c> updateAllAlligibleBoardsWithNewCard(Id gameId, Id boardId, String cardAddress, String cardValue) {
-        
-        //find all boards
-        List<Solitair_Metadata__c> boardList = [select id, Solitair_Game_Id__c, Value__c
-        from Solitair_Metadata__c where Solitair_Game_Id__c = :gameId];
+    public static void startBatchForupdateAllAlligibleBoardsWithNewCard(Id gameId, Id boardId, String cardAddress, String cardValue) {
+        //System.debug('GameID: ' + gameId);
+       
+        String query = 'select id, Solitair_Game_Id__c, Value__c '+ 
+        'from Solitair_Metadata__c where Solitair_Game_Id__c = :gameId';
+
+        SolitaireReturnNextFieldOneCardBatch srnfb = new SolitaireReturnNextFieldOneCardBatch(query, gameId, boardId, cardAddress, cardValue);
+        Id batchId = Database.executeBatch(srnfb);
+    }
+
+
+    public static void updateAllAlligibleBoardsWithNewCard(List<Solitair_Metadata__c> boardList, Id gameId, Id boardId, String cardAddress, String cardValue) {
 
         List<Solitair_Metadata__c> boards = new List<Solitair_Metadata__c>(); 
         for(Solitair_Metadata__c boardDb : boardList) {
@@ -55,17 +90,12 @@ global with sharing class SolitaireReturnNextField {
             board.key = SolitaireSolver.generateBoardVariantKey(board);
             boardDb.key__c = board.key;
             
-            if (board.boardId == boardId) {
-                boards.add(boardDb);
-            }
-            
             boardDb.value__c = JSON.serialize(board);
             
         }
 
         update boardList;
 
-        return boards;
     }
 
     public static String startQuableBoardVarintsCalculation(List<Solitair_Metadata__c> boardList, Id boardId, String cardAddress, String cardValue) {
@@ -110,6 +140,10 @@ global with sharing class SolitaireReturnNextField {
             newBoards.add(board);
 
             while (newBoards.size() > 0) {
+                if(!ifGovernanceLimitsIsOk()) {
+                    break;
+                }
+
                 // System.debug('Calculate variant for boards:');
                 // System.debug(newBoards);
                 Board boardNext = newBoards.remove(0);
@@ -121,6 +155,14 @@ global with sharing class SolitaireReturnNextField {
         }
 
         return result;
+    }
+
+
+    private static Boolean ifGovernanceLimitsIsOk() {
+        // System.debug('Limits:');
+        // System.debug(Limits.getCpuTime());
+        // System.debug(Limits.getLimitCpuTime());
+        return (Limits.getCpuTime() / Limits.getLimitCpuTime() < 0.9);
     }
 
     @AuraEnabled

@@ -27,7 +27,7 @@ export default class SolitaireMainField extends LightningElement {
     }
 
     renderedCallback() {
-        console.log('RenderCallBack: list of elements:');
+        //console.log('RenderCallBack: list of elements:');
         let ni = this.template.querySelectorAll('.app-stock-pail');
         let i = 0;
         ni.forEach(element => {
@@ -48,19 +48,19 @@ export default class SolitaireMainField extends LightningElement {
     }
 
     handleMessage(message) {
-        console.log('Listen for event - Solitaire Main Field');
+        //console.log('Listen for event - Solitaire Main Field');
         if (message.operator == 'new') {
-            console.log('New game initiated');
+            //console.log('New game initiated');
             this.getNextBoardAndUpdate();
         } else if (message.operator == 'open') {
-            console.log('Open board');
+            //console.log('Open board');
             this.openExistingBoard(message.constant);
         }
     }
 
     async openOneCardOnBoard(cardAddress, value) {
         try {
-            console.log(`gameId ${this.currentBoard.gameId} cardAddress ${cardAddress} cardValue: ${value}`)
+            //console.log(`gameId ${this.currentBoard.gameId} cardAddress ${cardAddress} cardValue: ${value}`)
             const result = await openOneCard({gameId: this.currentBoard.gameId, boardId: this.currentBoard.boardId, cardAddress: cardAddress, cardValue: value})
             this.currentBoard = JSON.parse(result);
             this.alreadyUsed.add(value);
@@ -80,7 +80,7 @@ export default class SolitaireMainField extends LightningElement {
 
     async getNextBoardAndUpdate() {
         try {
-            console.log('getInitialBoard:');
+            //console.log('getInitialBoard:');
             const result = await getInitialBoard();
             this.currentBoard = JSON.parse(result);
             this.alreadyUsed = this.updateAlreadyInUseCardList(this.currentBoard);
@@ -121,8 +121,8 @@ export default class SolitaireMainField extends LightningElement {
 
     async openExistingBoard(boardId) {
         try {
-            console.log('Open_Board:');
-            console.log(boardId);
+            //console.log('Open_Board:');
+            //console.log(boardId);
             const result = await openSelectedBoard({boardId: boardId});
             // console.log('result: ' + result);
             this.currentBoard = JSON.parse(result);
@@ -137,7 +137,7 @@ export default class SolitaireMainField extends LightningElement {
     initHtml(curBoard) {
         if (curBoard) {
             let initialBoard = curBoard;
-            console.log(`initialBoard: ${initialBoard}`);
+            //console.log(`initialBoard: ${initialBoard}`);
             //console.log(initialBoard);
 
             //define fundamentals
