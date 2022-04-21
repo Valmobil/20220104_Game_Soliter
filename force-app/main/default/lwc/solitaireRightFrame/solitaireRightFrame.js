@@ -5,12 +5,13 @@ import SOLITAIRE_UPDATE_CHANNEL from '@salesforce/messageChannel/Solitaire_Game_
 
 export default class SolitaireRightFrame extends LightningElement {
 
-    @track
-    results = [];
+   
     @wire(MessageContext)
     messageContext;
     currentBoardId;
     resultIndex = 0;
+    @track
+    results;
 
     connectedCallback() {
         this.subscribeToMessageChannel();
@@ -55,14 +56,13 @@ export default class SolitaireRightFrame extends LightningElement {
 
     handleClick(event) {
         this.getResultsFromApex();
+        return false;
     }
 
-
-
-    @wire getResultsFromApex() {
+    getResultsFromApex() {
         getResults({boardId: this.currentBoardId})
             .then((result) => {
-                this.results = JSON.parse(result);
+                this.results = result;
                 //console.log('Result list of boards:');
                 //console.log(this.results);
             })
@@ -73,7 +73,7 @@ export default class SolitaireRightFrame extends LightningElement {
     }
 
     get totalCardsClass() {
-        //console.log('Class list: ');
+        console.log('Class list: ');
         let result = this.results[this.resultIndex];
         if (this.results.length == this.resultIndex + 1) {
             this.resultIndex = 0;

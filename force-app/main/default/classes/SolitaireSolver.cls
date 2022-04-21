@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 04-19-2022
+ * @last modified on  : 04-20-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 public with sharing class SolitaireSolver {
@@ -38,13 +38,16 @@ public with sharing class SolitaireSolver {
         List<Solitair_Metadata__c> boardsNewDb = new List<Solitair_Metadata__c>();
 
         //generate new board for each movement
-        Boolean enableMoveFromFoundation = true;
+        Boolean enableMoveFromStock = true;
+        Boolean oneNewBoardWasGenerated = false;
+        possibleMovements.sort();
+        //printList('Possible movements:', possibleMovements);
         for (PossibleMovement oneMove : possibleMovements) {
 
             Address adrCardFrom = new Address(oneMove.cardFromAddress);
             Address adrCardTo = new Address(oneMove.cardToAddress);
             
-            if (adrCardFrom.firstLetter != 'f' || enableMoveFromFoundation) {
+            if (adrCardFrom.firstLetter != 's' || enableMoveFromStock || oneNewBoardWasGenerated == false) {
                 Board newBoard = board.cloneBoard();
                 newBoard.lastMove = board.level + '.' + oneMove.cardFromValue + '(' + adrCardFrom.toString() + ')->' + oneMove.cardToValue + '(' + adrCardTo.toString() + ')';
                 
@@ -52,10 +55,13 @@ public with sharing class SolitaireSolver {
                 if(moveCards(newBoard, adrCardFrom, adrCardTo, oneMove)) {
                     newBoard.fundamental = normalizeFoundation(newBoard.fundamental);
                     newBoard.key = generateBoardVariantKey(newBoard);
-                    //checkCardAddress(newBoard);
-    
+                    
+                    enableMoveFromStock = false;
+
                     if (haveNoSuchVariant(newBoard)) {
-                        enableMoveFromFoundation = false;
+
+                        oneNewBoardWasGenerated = true;
+
                         String result = JSON.serialize(newBoard);
                         Solitair_Metadata__c boardDbNew = board.mapperBoardToBoardDb(board.gameId, 'Board', result, newBoard.key);
                         boardsNewDb.add(boardDbNew);
@@ -585,7 +591,7 @@ public with sharing class SolitaireSolver {
         return new List<String>();
     }
 
-    class PossibleMovement{
+    class PossibleMovement implements Comparable {
         PossibleMovement(String cardFromValue, String cardFromAddress, String cardToValue, String cardToAddress) {
             this.cardFromValue = cardFromValue;
             this.cardFromAddress = cardFromAddress;
@@ -596,7 +602,17 @@ public with sharing class SolitaireSolver {
         String cardFromAddress;
         String cardToValue;
         String cardToAddress;
-    }    
+
+        // compareTo() method in ordet to place cards from stock "S" movements at the end of list
+        public Integer compareTo(Object compareTo) {
+            PossibleMovement compareToPos = (PossibleMovement)compareTo;
+            String st1 = String.isBlank(cardFromAddress)  ? 'a' : cardFromAddress.substring(0,1);
+            String st2 = String.isBlank(compareToPos.cardFromAddress) ? 'a' : compareToPos.cardFromAddress.substring(0,1);
+            if (st1 == st2) return 0;
+            if (st1 > st2) return 1;
+            return -1;        
+        }
+    }
 
     private static void initAvailableMoves() {
 

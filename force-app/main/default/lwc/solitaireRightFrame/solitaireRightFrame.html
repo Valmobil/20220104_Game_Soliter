@@ -10,13 +10,15 @@
         <lightning-layout multiple-rows>
                <!-- Brand variant: Identifies the primary action in a group of buttons -->
             <lightning-button variant="refresh" label="get boards" title="Primary action" onclick={handleClick} class="slds-m-left_x-small"></lightning-button>
+            <!-- <template if:true={results.length}> -->
             <template for:each={results} for:item="result">
                 <p key = {result.Id}>
                     <lightning-layout-item key={result.Id} flexibility="auto" padding="around-small">
-                         <a class={totalCardsClass} id={result.board_id__c} href="#" onclick={handleClickOnNextBoardLink}>{result.last_move__c}</a>
+                            <a class={totalCardsClass} id={result.board_id__c} href="#" onclick={handleClickOnNextBoardLink}>{result.last_move__c}</a>
                     </lightning-layout-item>
                 </p>
             </template>
+            <!-- </template> -->
         </lightning-layout>
     </div>
 </template>

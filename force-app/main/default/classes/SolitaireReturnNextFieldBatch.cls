@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 04-14-2022
+ * @last modified on  : 04-19-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 public with sharing class SolitaireReturnNextFieldBatch 
@@ -31,6 +31,9 @@ public with sharing class SolitaireReturnNextFieldBatch
     }
 
     public void finish(Database.BatchableContext bc){
+
+        SolitaireResults.startResultBatch(this.gameId, this.boardId);
+
         // AsyncApexJob job = [SELECT Id, Status, NumberOfErrors,
         //     JobItemsProcessed,
         //     TotalJobItems, CreatedBy.Email

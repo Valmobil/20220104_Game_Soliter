@@ -234,9 +234,15 @@ global with sharing class SolitaireReturnNextField {
     }
 
 
+
+
     @AuraEnabled
     public static String getInitialBoard() {
+        //delete all previouse games
+        List<Solitair_Game__c> res = [select id from Solitair_Game__c];
+        delete res;
         
+
         // System.debug('APEX: getInitialBoard');
         // List<Solitair_Game__c> games = [select name from Solitair_Game__c];
         Solitair_Game__c game = new Solitair_Game__c();
