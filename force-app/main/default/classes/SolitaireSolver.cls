@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 04-20-2022
+ * @last modified on  : 04-27-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 public with sharing class SolitaireSolver {
@@ -52,7 +52,7 @@ public with sharing class SolitaireSolver {
                 newBoard.lastMove = board.level + '.' + oneMove.cardFromValue + '(' + adrCardFrom.toString() + ')->' + oneMove.cardToValue + '(' + adrCardTo.toString() + ')';
                 
                 //checkCardAddress(newBoard);
-                if(moveCards(newBoard, adrCardFrom, adrCardTo, oneMove)) {
+                if(moveCards(newBoard, adrCardFrom, adrCardTo, oneMove, knownCards)) {
                     newBoard.fundamental = normalizeFoundation(newBoard.fundamental);
                     newBoard.key = generateBoardVariantKey(newBoard);
                     
@@ -84,8 +84,8 @@ public with sharing class SolitaireSolver {
     }
 
     private static void checkCardAddress(Board board) {
-        checkCardAddressOfOneType(board, board.fundamental, 'fundamentls', 'f');
-        checkCardAddressOfOneType(board, board.runningTrack, 'runningTrack','r');
+        //checkCardAddressOfOneType(board, board.fundamental, 'fundamentls', 'f');
+        //checkCardAddressOfOneType(board, board.runningTrack, 'runningTrack','r');
     }
 
     private static void checkCardAddressOfOneType(Board board, List<Line> lines, String typeName, String type) {
@@ -96,11 +96,6 @@ public with sharing class SolitaireSolver {
 
                 Address address = new Address(card.address);
                 if (address.firstLetter != type) {
-                    // System.debug('Error in ' + typeName + ' address first letter - should be "' + type + '": ' + card.address);
-                    // System.debug('Board ' + typeName + ' line: ' + line);
-                    // System.debug('Board id:' + board.boardId);
-                    // System.debug('Board last move' + board.lastMove);
-                    // System.debug('Board level: ' + board.level);
                     
                     CalloutException e = new CalloutException();
                     e.setMessage('Error in ' + typeName + ' address - first letter');
@@ -108,24 +103,11 @@ public with sharing class SolitaireSolver {
                 }
                 
                 if (address.lineNumber != i) {
-                    // System.debug('Error in ' + typeName + ' address line number - should be: ' + i + ' _ ' + card.address);
-                    // System.debug('Board ' + typeName + ' line: ' + line);
-                    // System.debug('Board id:' + board.boardId);
-                    // System.debug('Board last move' + board.lastMove);
-                    // System.debug('Board level: ' + board.level);
-
                     CalloutException e = new CalloutException();
                     e.setMessage('Error in ' + typeName + ' address - line number');
                     throw e;
                 }
-
                 if (address.position != j) {
-                    // System.debug('Error in ' + typeName + ' address position - should be: ' + j + ' _ ' + card.address);
-                    // System.debug('Board ' + typeName + ' line: ' + line);
-                    // System.debug('Board id:' + board.boardId);
-                    // System.debug('Board last move' + board.lastMove);
-                    // System.debug('Board level: ' + board.level);
-                    
                     CalloutException e = new CalloutException();
                     e.setMessage('Error in ' + typeName + ' address - position');
                     throw e;
@@ -133,6 +115,7 @@ public with sharing class SolitaireSolver {
             }
         }
     }
+
 
     public static String generateBoardVariantKey(Board board) {
         String key = '';
@@ -247,16 +230,16 @@ public with sharing class SolitaireSolver {
             for (String key : myMap.keySet()) {
                 myList.add(myMap.get(key) + '_ _' + key);
             }
-            //printList(name, myList);
-        // } else {
-        //     printList(name, (List<String>) null);
+            printList(name, myList);
+        } else {
+            printList(name, (List<String>) null);
         }
     }
 
     public static void printList(String name, Set<String> myMap) {
         if (myMap != null) {
             List<String> myList = new List<String>(myMap);
-            //printList(name, myList);
+            printList(name, myList);
         }
     }
 
@@ -315,8 +298,8 @@ public with sharing class SolitaireSolver {
                 if (String.isBlank(cardName) && card.isEmpty) {
                     //if cell is blank fill with virtual card name
                     cardName = 'R' + i;
-                }
-                if ((card.isKnown && card.isOpen) || card.isEmpty ) {
+                    knownCards.put(cardName, card.address);
+                } else if ((card.isKnown && card.isOpen) || card.isEmpty ) {
                     //add only known cards and blank cells
                     knownCards.put(card.value, card.address);
                 }
@@ -369,7 +352,12 @@ public with sharing class SolitaireSolver {
         line.id = lineNum;
     }
 
-    private static Boolean moveCards(Board board, Address adrFrom, Address adrTo, PossibleMovement oneMove) {
+    private class CardValue {
+        private String type;
+        private Integer cost;
+    }
+
+    private static Boolean moveCards(Board board, Address adrFrom, Address adrTo, PossibleMovement oneMove, Map<String, String> knownCards) {
         // System.debug('Move Cards from: ' + adrFrom.toString() + ' to: ' + adrTo.toString());
         
         // move fundamentals
@@ -435,18 +423,48 @@ public with sharing class SolitaireSolver {
                     return false;
                 }
             }
+            //if we have e.g. 4h on top of 5p and 5c in knowing cards do not generare movement 4h -> 5c
+            //it is works only if 4d not available in knowing cards. 
+
+            // 1) check if From Top have index/position > 0
+            // 2) check if From Bottom Card already Open and Known
+            // 3) check if To Bottom Card is present
+            // 4) check if To Top Card not on Top of To Bottom Card
+            // 5) check if To Top Card if present
+            // 6) do not allow such movement
+            System.debug('Check adrFrom: ' + adrFrom); 
+            if (adrFrom.position > 0) {
+
+                Card cardTop = lineFrom.get(adrFrom.position);
+                Card cardBottom = lineFrom.get(adrFrom.position - 1);
+                System.debug('Check cardTop: ' + cardTop);
+                System.debug('Check cardBottom: ' + cardBottom);
+                if (cardBottom.isOpen && cardBottom.isKnown) {
+                    Card cardToBottom = lineTo.get(adrTo.position);
+                    System.debug('Check cardToBottom: ' + cardToBottom);
+                    System.debug('Check cardBottom.getCompanionCard(): ' + cardBottom.getCompanionCard());
+                    if (cardBottom.getCompanionCard() == cardToBottom.value) {
+                        //find potential concurent card in known cards
+                        System.debug('Check cardTop.getCompanionCard(): ' + cardTop.getCompanionCard());
+                        if(knownCards.containsKey(cardTop.getCompanionCard())) {
+                            if (adrTo.position + 1 < lineTo.size()) {
+                                Card cardToTop = lineTo.get(adrTo.position + 1);
+                                System.debug('Check cardToTop: ' + cardToTop);
+                                System.debug('Check  cardTop.getCompanionCard(): ' +  cardTop.getCompanionCard());
+                                if (cardToTop.isOpen && cardToTop.isKnown && cardToTop.value == cardTop.getCompanionCard()) {
+                                    System.debug('Return false');
+                                    return false;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+
             // Move cards
             removeBlankCardFromLine(lineTo, adrTo);
             moveCardList(adrFrom, adrTo, lineFrom, lineTo);
-
-            //change address (addressOriginal w/o changes)
-            //Card card = lineFrom.get(adrFrom.position);
-            //Address addressNew = new Address(adrTo);
-            //addressNew.position = lineTo.size();
-            //card.address = addressNew.toString();
-
-            //lineTo.add(card);
-            //lineFrom.remove(adrFrom.position);
 
             //"open" last but one card
             if (adrFrom.position > 0) {

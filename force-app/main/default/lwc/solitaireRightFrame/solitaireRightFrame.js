@@ -31,8 +31,9 @@ export default class SolitaireRightFrame extends LightningElement {
         if (message.operator == 'result') {
             //console.log('Result update event handler:');
             this.currentBoardId = message.constant;
+        } else if (message.operator == 'new') {
+            this.results = null;
         }
-        // console.log(this.currentBoardId);
     }
 
     handleClickOnNextBoardLink(event) {

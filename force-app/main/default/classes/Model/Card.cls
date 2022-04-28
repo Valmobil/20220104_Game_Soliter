@@ -2,10 +2,18 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 03-18-2022
+ * @last modified on  : 04-27-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 global with sharing class Card {
+
+    global String address;
+    global String addressOriginal;
+    global String value;
+    global Boolean isEmpty = false;
+    global Boolean isOpen = false;
+    global Boolean isKnown = false;
+
     public Card() {
         this.value = '';
     }
@@ -25,10 +33,28 @@ global with sharing class Card {
         address = address;
     }
 
-    global String address;
-    global String addressOriginal;
-    global String value;
-    global Boolean isEmpty = false;
-    global Boolean isOpen = false;
-    global Boolean isKnown = false;
+    global String getCardSuit() {
+        return this.value.right(1);
+    }
+
+    global String getCardCost() {
+        return this.value.left(this.value.length() - 1);
+    }
+
+    global String getCompanionCard() {
+        String cost = this.getCardCost();
+        String suit = this.getCardSuit();
+        
+        if (suit == 'd') {
+            suit = 'h';
+        } else if (suit == 'h') {
+            suit = 'd';
+        } else if (suit == 'c') {
+            suit = 'p';
+        } else if (suit == 'p') {
+            suit = 'c';
+        }
+        return cost + suit;
+    } 
+
 }
