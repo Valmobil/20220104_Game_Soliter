@@ -62,7 +62,8 @@ export default class SolitaireMainField extends LightningElement {
         try {
             //console.log(`gameId ${this.currentBoard.gameId} cardAddress ${cardAddress} cardValue: ${value}`)
             const result = await openOneCard({gameId: this.currentBoard.gameId, boardId: this.currentBoard.boardId, cardAddress: cardAddress, cardValue: value})
-            this.currentBoard = JSON.parse(result);
+            let tempObj = JSON.parse(result);
+            this.currentBoard = JSON.parse(tempObj.board);
             this.alreadyUsed.add(value);
 
             //fire event for right frame on result update

@@ -2,7 +2,13 @@ import { LightningElement, track, wire } from 'lwc';
 import getResults from '@salesforce/apex/SolitaireResults.getResults';
 import { subscribe, publish, MessageContext } from 'lightning/messageService';
 import SOLITAIRE_UPDATE_CHANNEL from '@salesforce/messageChannel/Solitaire_Game_Update__c';
-
+import {
+    subscribe as subscrb,
+    unsubscribe,
+    onError,
+    setDebugFlag,
+    isEmpEnabled,
+} from 'lightning/empApi';
 export default class SolitaireRightFrame extends LightningElement {
 
    
@@ -11,10 +17,32 @@ export default class SolitaireRightFrame extends LightningElement {
     currentBoardId;
     resultIndex = 0;
     @track
-    results;
+    results = [];
+    channelName = '/event/Soliteir_News__e';
 
     connectedCallback() {
         this.subscribeToMessageChannel();
+        this.subscribeToPlatformEvent();
+    }
+
+    subscribeToPlatformEvent() {
+
+        console.log("Setup platform event subscription:");
+        var self = this;
+        const messageCallback = function (response) {
+            //console.log('New message received: ', JSON.stringify(response));
+            console.log('New message received: ');
+            self.getResultsFromApex();
+            console.log('Result finished: ')
+        };
+
+        subscrb(this.channelName, -1, messageCallback).then((response) => {
+            // Response contains the subscription information on subscribe call
+            console.log(
+                'Subscription request sent to: ',
+                JSON.stringify(response.channel)
+            );
+        });
     }
 
     subscribeToMessageChannel() {
@@ -61,6 +89,7 @@ export default class SolitaireRightFrame extends LightningElement {
     }
 
     getResultsFromApex() {
+        console.log('Get result from APEX method was called:');
         getResults({boardId: this.currentBoardId})
             .then((result) => {
                 this.results = result;

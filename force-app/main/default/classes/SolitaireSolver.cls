@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 04-27-2022
+ * @last modified on  : 05-01-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 public with sharing class SolitaireSolver {
@@ -236,6 +236,14 @@ public with sharing class SolitaireSolver {
         }
     }
 
+    public static void printList(String name, List<List<Object>> myList) {
+        if (myList != null) {
+            for (Integer i = 0; i < myList.size(); i++) {
+                printList('Line: ' + i, myList.get(i));
+            }
+        }
+    }
+
     public static void printList(String name, Set<String> myMap) {
         if (myMap != null) {
             List<String> myList = new List<String>(myMap);
@@ -391,6 +399,14 @@ public with sharing class SolitaireSolver {
             }
             // Move cards
             moveCardList(adrFrom, adrTo, lineFrom, lineTo);
+            //add "empty" card on in blank line
+            if (lineFrom.isEmpty()) {
+                Card emptyCard = new Card();
+                emptyCard.value = '';
+                emptyCard.isEmpty = true;
+                emptyCard.address = adrFrom.firstLetter + '_' + adrFrom.lineNumber + '_' + adrFrom.position;
+                lineFrom.add(emptyCard);
+            }
             return true;
         }
         
@@ -406,9 +422,20 @@ public with sharing class SolitaireSolver {
                 lineTo = board.fundamental.get(adrTo.lineNumber).value;
                 //we can move only on the latest running cards
                 if (lineTo.size() != adrTo.position + 1) {
+                    //we can move only to the last card in line
+                    return false;
+                } 
+                //we can move only on the latest running cards
+                if (lineFrom.size() != adrFrom.position + 1) {
                     //we can move only the last card in line
                     return false;
                 } 
+                Card cardFrom = lineFrom.get(adrFrom.position);
+                Card cardTo = lineFrom.get(adrTo.position);
+                if(String.isNotBlank(cardTo.value) && (cardFrom.getCardSuit() != cardTo.getCardSuit())) {
+                    //we cannot move to foundation card with diferent suit
+                    return false;
+                }
             }
             if (adrTo.firstLetter == 'r') {
                 lineTo = board.runningTrack.get(adrTo.lineNumber).value;
@@ -585,8 +612,7 @@ public with sharing class SolitaireSolver {
                 changeLineAddresses(fundamentals.get(i), sortedList.size() - 1);
             }
         }
-        // System.debug('Sorted foundations:');
-        // System.debug(sortedList);
+        //printList('Sorted foundations:', sortedList);
         return sortedList;
     }
 

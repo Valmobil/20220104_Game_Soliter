@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 04-26-2022
+ * @last modified on  : 04-29-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 public with sharing class SolitaireResultsBatch 
@@ -28,5 +28,10 @@ public with sharing class SolitaireResultsBatch
     }
 
     public void finish(Database.BatchableContext bc){
+        // Create an instance of the event and store it in the newsEvent variable
+        Soliteir_News__e newsEvent = new Soliteir_News__e(
+        Operator_Type__c='Result Finished',
+        Constant__c = '3');
+        Database.SaveResult sr = EventBus.publish(newsEvent);
     }
 }

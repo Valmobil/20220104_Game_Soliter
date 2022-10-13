@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 04-19-2022
+ * @last modified on  : 04-30-2022
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 global with sharing class SolitaireReturnNextField {
@@ -26,24 +26,31 @@ global with sharing class SolitaireReturnNextField {
 
 
         //update all boards with newly opened card in batch  + calculate variants in batch       
-        startBatchForupdateAllAlligibleBoardsWithNewCard(gameId, boardId, cardAddress, cardValue);
+        id batchId = startBatchForupdateAllAlligibleBoardsWithNewCard(gameId, boardId, cardAddress, cardValue);
 
 
         //return updated board
         boardList = [select id, Solitair_Game_Id__c, Value__c
             from Solitair_Metadata__c where Solitair_Game_Id__c = :gameId and id = :boardId];
         // String result = startQuableBoardVarintsCalculation(boardList, boardId, cardAddress, cardValue);
-        String result = boardList.get(0).value__c;
+        //String result = boardList.get(0).value__c;
         
+        OneBoard oneBoard = new OneBoard();
+        oneBoard.board = boardList.get(0).value__c;
+        oneBoard.batchId = batchId;
         // //process other boards in batches
         // String query = 'select id, Solitair_Game_Id__c, Value__c '+
         // 'from Solitair_Metadata__c where Solitair_Game_Id__c = :gameId and completed__c = false and id != :boardId';
 
         // SolitaireReturnNextFieldBatch srnfb = new SolitaireReturnNextFieldBatch(query, gameId, boardId, cardAddress, cardValue);
         // Id batchId = Database.executeBatch(srnfb, 2);
-        return result;
+        return JSON.serialize(oneBoard);
     }
 
+    class OneBoard {
+        private String board;
+        private Id batchId;
+    }
 
     public static void startBoardsVariantsCalculation(Id gameId, Id boardId, String cardAddress, String cardValue) {
 
@@ -62,7 +69,7 @@ global with sharing class SolitaireReturnNextField {
         // return result;
     }
 
-    public static void startBatchForupdateAllAlligibleBoardsWithNewCard(Id gameId, Id boardId, String cardAddress, String cardValue) {
+    public static Id startBatchForupdateAllAlligibleBoardsWithNewCard(Id gameId, Id boardId, String cardAddress, String cardValue) {
         //System.debug('GameID: ' + gameId);
        
         String query = 'select id, Solitair_Game_Id__c, Value__c '+ 
@@ -70,6 +77,8 @@ global with sharing class SolitaireReturnNextField {
 
         SolitaireReturnNextFieldOneCardBatch srnfb = new SolitaireReturnNextFieldOneCardBatch(query, gameId, boardId, cardAddress, cardValue);
         Id batchId = Database.executeBatch(srnfb);
+
+        return batchId;
     }
 
 
@@ -233,9 +242,6 @@ global with sharing class SolitaireReturnNextField {
         return 0;
     }
 
-
-
-
     @AuraEnabled
     public static String getInitialBoard() {
         //delete all previouse games
@@ -292,23 +298,23 @@ global with sharing class SolitaireReturnNextField {
                 //open each last card for running pails
                 if (type == 'r' && j == i) {
                     card.isOpen = true;
-                    // remove after test
-                    if (i == 1) {
-                        card.value = '9D';
-                    } else if (i == 2) {
-                        card.value = 'JC';
-                    } else if (i == 3) {
-                        card.value = 'KD';
-                    } else if (i == 4) {
-                        card.value = '5C';
-                    } else if (i == 5) {
-                        card.value = 'AC';
-                    } else if (i == 6) {
-                        card.value = 'KP';
-                    }
-                    if (i < 7 && i > 0) {
-                        card.isKnown = true;
-                    }
+                //     // remove after test
+                //     if (i == 1) {
+                //         card.value = '9D';
+                //     } else if (i == 2) {
+                //         card.value = 'JC';
+                //     } else if (i == 3) {
+                //         card.value = 'KD';
+                //     } else if (i == 4) {
+                //         card.value = '5C';
+                //     } else if (i == 5) {
+                //         card.value = 'AC';
+                //     } else if (i == 6) {
+                //         card.value = 'KP';
+                //     }
+                //     if (i < 7 && i > 0) {
+                //         card.isKnown = true;
+                //     }
                 } 
                 if (type == 'f') {
                     card.isEmpty = true;
