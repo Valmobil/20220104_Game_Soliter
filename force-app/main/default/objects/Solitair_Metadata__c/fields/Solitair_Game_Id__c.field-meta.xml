@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Solitair_Game_Id__c</fullName>
+    <externalId>false</externalId>
+    <label>Solitair Game Id</label>
+    <referenceTo>Solitair_Game__c</referenceTo>
+    <relationshipLabel>Solitair Metadata</relationshipLabel>
+    <relationshipName>Solitair_Metadata</relationshipName>
+    <relationshipOrder>0</relationshipOrder>
+    <reparentableMasterDetail>false</reparentableMasterDetail>
+    <trackTrending>false</trackTrending>
+    <type>MasterDetail</type>
+    <writeRequiresMasterRead>false</writeRequiresMasterRead>
+</CustomField>

@@ -17,15 +17,17 @@ global with sharing class Board {
         newBoard.parentId = this.boardId;
         newBoard.key = this.key;
         newBoard.level = this.level + 1;
+        newBoard.score = this.score;
         return newBoard;
     }
 
-    global Solitair_Metadata__c mapperBoardToBoardDb(Id gameId, String boardType, String jsonString, String key) {
+    global Solitair_Metadata__c mapperBoardToBoardDb(Id gameId, String boardType, String jsonString, String key, Integer score) {
         Solitair_Metadata__c boardDb = new Solitair_Metadata__c();
         boardDb.Solitair_Game_Id__c = gameId;
         boardDb.Type__c = boardType;
         boardDb.Value__c = jsonString;
         boardDb.Key__c = key;
+        boardDb.score__c = score;
         return boardDb;
     }
 
@@ -38,4 +40,5 @@ global with sharing class Board {
     global List<Line> stockPail;
     global List<Line> runningTrack;
     global String key;
+    global Integer score;
 }
