@@ -12,13 +12,15 @@ public with sharing class SolitaireReturnNextFieldBatch
     private Id boardId;
     private String cardAddress;
     private String cardValue;
+    private Decimal maxScore;
 
-    public SolitaireReturnNextFieldBatch(String query, Id gameId, Id boardId, String cardAddress, String cardValue) {
+    public SolitaireReturnNextFieldBatch(String query, Id gameId, Id boardId, String cardAddress, String cardValue, Decimal maxScore) {
         this.query = query;
         this.gameId = gameId;
         this.boardId = boardId;
         this.cardAddress = cardAddress;
         this.cardValue = cardValue;
+        this.maxScore = maxScore;
     }
 
     public Database.QueryLocator start(Database.BatchableContext bc) {

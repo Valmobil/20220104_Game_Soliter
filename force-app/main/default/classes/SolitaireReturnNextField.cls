@@ -55,18 +55,17 @@ global with sharing class SolitaireReturnNextField {
     public static void startBoardsVariantsCalculation(Id gameId, Id boardId, String cardAddress, String cardValue) {
 
         //System.debug('Start variants calculation:');
-
-        List<Solitair_Metadata__c> boardList = [select id, Solitair_Game_Id__c, Value__c
-        from Solitair_Metadata__c where Solitair_Game_Id__c = :gameId and id = :boardId];
-        String result = startQuableBoardVarintsCalculation(boardList, boardId, cardAddress, cardValue);
+        
+        //find next score
+        List<Solitair_Metadata__c> boardList = [SELECT score__c FROM Solitair_Metadata__c WHERE completed__c = false ORDER BY score__c LIMIT 1];
+        Decimal minScore = boardList.get(0).score__c;
         
         //process other boards in batches
-        String query = 'select id, Solitair_Game_Id__c, Value__c '+
-        'from Solitair_Metadata__c where Solitair_Game_Id__c = :gameId and completed__c = false and id != :boardId';
+        String query = 'SELECT id, Solitair_Game_Id__c, Value__c, score__c '+
+        'FROM Solitair_Metadata__c WHERE Solitair_Game_Id__c = :gameId AND completed__c = false AND score__c = ' + Integer.valueOf(minScore);
 
-        SolitaireReturnNextFieldBatch srnfb = new SolitaireReturnNextFieldBatch(query, gameId, boardId, cardAddress, cardValue);
+        SolitaireReturnNextFieldBatch srnfb = new SolitaireReturnNextFieldBatch(query, gameId, boardId, cardAddress, cardValue, minScore);
         Id batchId = Database.executeBatch(srnfb, 2);
-        // return result;
     }
 
     public static Id startBatchForupdateAllAlligibleBoardsWithNewCard(Id gameId, Id boardId, String cardAddress, String cardValue) {
@@ -111,6 +110,8 @@ global with sharing class SolitaireReturnNextField {
         
         String result = '';
         
+        Decimal score = boardList.get(0).score__c;
+
         for(Solitair_Metadata__c boardDb : boardList) {
 
             Board board = (Board) JSON.deserialize(boardDb.Value__c, Board.class);
@@ -156,7 +157,7 @@ global with sharing class SolitaireReturnNextField {
                 // System.debug('Calculate variant for boards:');
                 // System.debug(newBoards);
                 Board boardNext = newBoards.remove(0);
-                List<Board> boadsGenerated = SolitaireSolver.calculateVariants(boardNext);
+                List<Board> boadsGenerated = SolitaireSolver.calculateVariants(boardNext, score);
                 if (boadsGenerated.size() > 0) {
                     newBoards.addAll(boadsGenerated);
                 }
@@ -300,22 +301,22 @@ global with sharing class SolitaireReturnNextField {
                 if (type == 'r' && j == i) {
                     card.isOpen = true;
                 //     // remove after test
-                //     if (i == 1) {
-                //         card.value = '9D';
-                //     } else if (i == 2) {
-                //         card.value = 'JC';
-                //     } else if (i == 3) {
-                //         card.value = 'KD';
-                //     } else if (i == 4) {
-                //         card.value = '5C';
-                //     } else if (i == 5) {
-                //         card.value = 'AC';
-                //     } else if (i == 6) {
-                //         card.value = 'KP';
-                //     }
-                //     if (i < 7 && i > 0) {
-                //         card.isKnown = true;
-                //     }
+                    // if (i == 1) {
+                    //     card.value = '9D';
+                    // } else if (i == 2) {
+                    //     card.value = 'JC';
+                    // } else if (i == 3) {
+                    //     card.value = 'KD';
+                    // } else if (i == 4) {
+                    //     card.value = '5C';
+                    // } else if (i == 5) {
+                    //     card.value = 'AC';
+                    // } else if (i == 6) {
+                    //     card.value = 'KP';
+                    // }
+                    // if (i < 7 && i > 0) {
+                    //     card.isKnown = true;
+                    // }
                 } 
                 if (type == 'f') {
                     card.isEmpty = true;

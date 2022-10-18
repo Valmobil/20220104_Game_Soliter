@@ -15,7 +15,7 @@ public with sharing class SolitaireSolver {
         initAvailableMoves();
     }
 
-    public static List<Board> calculateVariants(Board board) {
+    public static List<Board> calculateVariants(Board board, Decimal score) {
 
         //set map of existing cards running tracks
         Map<String, String> knownCards = collectExistingCardsList(board);
@@ -38,8 +38,6 @@ public with sharing class SolitaireSolver {
         List<Solitair_Metadata__c> boardsNewDb = new List<Solitair_Metadata__c>();
 
         //generate new board for each movement
-        Boolean enableMoveFromStock = true;
-        Boolean oneNewBoardWasGenerated = false;
         possibleMovements.sort();
         //printList('Possible movements:', possibleMovements);
         for (PossibleMovement oneMove : possibleMovements) {
@@ -47,41 +45,39 @@ public with sharing class SolitaireSolver {
             Address adrCardFrom = new Address(oneMove.cardFromAddress);
             Address adrCardTo = new Address(oneMove.cardToAddress);
             
-            if (adrCardFrom.firstLetter != 's' || enableMoveFromStock || oneNewBoardWasGenerated == false) {
-                Board newBoard = board.cloneBoard();
-                
-                //checkCardAddress(newBoard);
-                if(moveCards(newBoard, adrCardFrom, adrCardTo, oneMove, knownCards)) {
-                    newBoard.score = updateBoardScore(newBoard, adrCardFrom, adrCardTo);
-                    newBoard.lastMove = board.level + '.(' + newBoard.score + ')'+ oneMove.cardFromValue + '(' + adrCardFrom.toString() + ')->' + oneMove.cardToValue + '(' + adrCardTo.toString() + ')';
-                    newBoard.fundamental = normalizeFoundation(newBoard.fundamental);
-                    newBoard.key = generateBoardVariantKey(newBoard);
-                    
-                    enableMoveFromStock = false;
+            
+            Board newBoard = board.cloneBoard();
+            
+            //checkCardAddress(newBoard);
+            if(moveCards(newBoard, adrCardFrom, adrCardTo, oneMove, knownCards)) {
+                newBoard.score = updateBoardScore(newBoard, adrCardFrom, adrCardTo);
+                newBoard.lastMove = board.level + '.(' + newBoard.score + ')'+ oneMove.cardFromValue + '(' + adrCardFrom.toString() + ')->' + oneMove.cardToValue + '(' + adrCardTo.toString() + ')';
+                newBoard.fundamental = normalizeFoundation(newBoard.fundamental);
+                newBoard.key = generateBoardVariantKey(newBoard);
 
-                    if (haveNoSuchVariant(newBoard)) {
+                if (haveNoSuchVariant(newBoard)) {
+                    String result = JSON.serialize(newBoard);
+                    Solitair_Metadata__c boardDbNew = board.mapperBoardToBoardDb(board.gameId, 'Board', result, newBoard.key, newBoard.score);
+                    boardsNewDb.add(boardDbNew);
+                    boardListSet.add(newBoard.key);
 
-                        oneNewBoardWasGenerated = true;
-
-                        String result = JSON.serialize(newBoard);
-                        Solitair_Metadata__c boardDbNew = board.mapperBoardToBoardDb(board.gameId, 'Board', result, newBoard.key, newBoard.score);
-                        boardsNewDb.add(boardDbNew);
-                        boardListSet.add(newBoard.key);
-
-                        //run variant calculation
-                        newBoard.boardId = boardDbNew.id;
-                        boardsNew.add(newBoard);
-                    }
+                    //run variant calculation
+                    newBoard.boardId = boardDbNew.id;
+                    boardsNew.add(newBoard);
                 }
             }
+        
         }
 
         insert boardsNewDb;
+        List<Board> boardsNextStep = new List<Board>();
         for (Integer i = 0; i < boardsNewDb.size(); i++) {
             boardsNew.get(i).boardId = boardsNewDb.get(i).id;
+            if(boardsNew.get(i).score == score) {
+                boardsNextStep.add(boardsNew.get(i));
+            }
         }
-
-        return boardsNew;
+        return boardsNextStep;
     }
 
     private static Integer updateBoardScore(Board board, Address adrCardFrom, Address adrCardTo) {
