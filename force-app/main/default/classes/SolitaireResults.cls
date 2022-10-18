@@ -22,8 +22,8 @@ global with sharing class SolitaireResults {
 
         calculateMinPath(results, boardId);
 
-        System.debug('Result: ');
-        System.debug(results);
+        // System.debug('Result: ');
+        // System.debug(results);
 
         if (results == null) {
             results = new List<Solitair_Result__c>();

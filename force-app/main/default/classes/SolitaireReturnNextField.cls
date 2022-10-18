@@ -259,6 +259,7 @@ global with sharing class SolitaireReturnNextField {
         board.gameId = game.id;
         board.parentId = null;
         board.level = 0;
+        board.score = 0;
         board.runningTrack = generateInitialSet('r', RUNNING_SIZE, 7);
         board.fundamental = generateInitialSet('f', FUNDAMENTAL_SIZE, 1);
         board.stockPail = generateInitialSet('s', STOCK_PAIL_SIZE, STOCK_PAIL_LENGTH);
@@ -269,7 +270,7 @@ global with sharing class SolitaireReturnNextField {
 
         List<Solitair_Metadata__c> boardList = [select id, Solitair_Game_Id__c from Solitair_Metadata__c where Solitair_Game_Id__c = :board.boardId];
         if (boardList.size() == 0) {
-            Solitair_Metadata__c boardDb = board.mapperBoardToBoardDb(board.gameId, 'Board', result, board.key);
+            Solitair_Metadata__c boardDb = board.mapperBoardToBoardDb(board.gameId, 'Board', result, board.key, board.score);
             insert boardDb;
             board.boardId = boardDb.id;
             SolitaireSolver.boardListSet.add(board.key);

@@ -49,10 +49,11 @@ public with sharing class SolitaireSolver {
             
             if (adrCardFrom.firstLetter != 's' || enableMoveFromStock || oneNewBoardWasGenerated == false) {
                 Board newBoard = board.cloneBoard();
-                newBoard.lastMove = board.level + '.' + oneMove.cardFromValue + '(' + adrCardFrom.toString() + ')->' + oneMove.cardToValue + '(' + adrCardTo.toString() + ')';
                 
                 //checkCardAddress(newBoard);
                 if(moveCards(newBoard, adrCardFrom, adrCardTo, oneMove, knownCards)) {
+                    newBoard.score = updateBoardScore(newBoard, adrCardFrom, adrCardTo);
+                    newBoard.lastMove = board.level + '.(' + newBoard.score + ')'+ oneMove.cardFromValue + '(' + adrCardFrom.toString() + ')->' + oneMove.cardToValue + '(' + adrCardTo.toString() + ')';
                     newBoard.fundamental = normalizeFoundation(newBoard.fundamental);
                     newBoard.key = generateBoardVariantKey(newBoard);
                     
@@ -63,7 +64,7 @@ public with sharing class SolitaireSolver {
                         oneNewBoardWasGenerated = true;
 
                         String result = JSON.serialize(newBoard);
-                        Solitair_Metadata__c boardDbNew = board.mapperBoardToBoardDb(board.gameId, 'Board', result, newBoard.key);
+                        Solitair_Metadata__c boardDbNew = board.mapperBoardToBoardDb(board.gameId, 'Board', result, newBoard.key, newBoard.score);
                         boardsNewDb.add(boardDbNew);
                         boardListSet.add(newBoard.key);
 
@@ -81,6 +82,36 @@ public with sharing class SolitaireSolver {
         }
 
         return boardsNew;
+    }
+
+    private static Integer updateBoardScore(Board board, Address adrCardFrom, Address adrCardTo) {
+        // System.debug('board.runningTrack:');
+        // System.debug(board.runningTrack);
+        // System.debug('adrCardFrom:');
+        // System.debug(adrCardFrom);
+        // System.debug('adrCardTo:');
+        // System.debug(adrCardTo);
+
+        //each movement add to score +10 points, except next 2 cases:
+        if (adrCardTo.firstLetter == 'f') {
+            // System.debug('Return = 0');
+            return board.score;
+        }
+        if (adrCardFrom.firstLetter == 'r') {
+            if(adrCardFrom.position > 0) {
+                Integer pos = adrCardFrom.position - 1;
+                Line line = board.runningTrack.get(adrCardFrom.lineNumber);
+                Card card = line.value.get(pos);
+                // System.debug('card');
+                // System.debug(card);
+                if (!card.isKnown) {
+                    // System.debug('Return = 0');
+                    return board.score;
+                }
+            }
+        }
+        // System.debug('Return = +10');
+        return board.score + 10;
     }
 
     private static void checkCardAddress(Board board) {
@@ -392,10 +423,9 @@ public with sharing class SolitaireSolver {
                 }
                 if (!String.isBlank(oneMove.cardFromValue) && !String.isBlank(oneMove.cardToValue) 
                 && oneMove.cardFromValue.right(1) == oneMove.cardToValue.right(1)) {
-                    // if last cards' values coinsist - this variant only fro fundamentals
+                    // if last cards' values exists - this variant only fro fundamentals
                     return false;
                 }
-
             }
             // Move cards
             moveCardList(adrFrom, adrTo, lineFrom, lineTo);
@@ -459,27 +489,27 @@ public with sharing class SolitaireSolver {
             // 4) check if To Top Card not on Top of To Bottom Card
             // 5) check if To Top Card if present
             // 6) do not allow such movement
-            System.debug('Check adrFrom: ' + adrFrom); 
+            // System.debug('Check adrFrom: ' + adrFrom); 
             if (adrFrom.position > 0) {
 
                 Card cardTop = lineFrom.get(adrFrom.position);
                 Card cardBottom = lineFrom.get(adrFrom.position - 1);
-                System.debug('Check cardTop: ' + cardTop);
-                System.debug('Check cardBottom: ' + cardBottom);
+                // System.debug('Check cardTop: ' + cardTop);
+                // System.debug('Check cardBottom: ' + cardBottom);
                 if (cardBottom.isOpen && cardBottom.isKnown) {
                     Card cardToBottom = lineTo.get(adrTo.position);
-                    System.debug('Check cardToBottom: ' + cardToBottom);
-                    System.debug('Check cardBottom.getCompanionCard(): ' + cardBottom.getCompanionCard());
+                    // System.debug('Check cardToBottom: ' + cardToBottom);
+                    // System.debug('Check cardBottom.getCompanionCard(): ' + cardBottom.getCompanionCard());
                     if (cardBottom.getCompanionCard() == cardToBottom.value) {
                         //find potential concurent card in known cards
-                        System.debug('Check cardTop.getCompanionCard(): ' + cardTop.getCompanionCard());
+                        // System.debug('Check cardTop.getCompanionCard(): ' + cardTop.getCompanionCard());
                         if(knownCards.containsKey(cardTop.getCompanionCard())) {
                             if (adrTo.position + 1 < lineTo.size()) {
                                 Card cardToTop = lineTo.get(adrTo.position + 1);
-                                System.debug('Check cardToTop: ' + cardToTop);
-                                System.debug('Check  cardTop.getCompanionCard(): ' +  cardTop.getCompanionCard());
+                                // System.debug('Check cardToTop: ' + cardToTop);
+                                // System.debug('Check  cardTop.getCompanionCard(): ' +  cardTop.getCompanionCard());
                                 if (cardToTop.isOpen && cardToTop.isKnown && cardToTop.value == cardTop.getCompanionCard()) {
-                                    System.debug('Return false');
+                                    // System.debug('Return false');
                                     return false;
                                 }
                             }
